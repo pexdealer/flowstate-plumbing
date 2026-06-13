@@ -104,6 +104,46 @@
     "notes": {
       "type": "string",
       "description": "Internal or customer-facing notes"
+    },
+    "public_token": {
+      "type": "string",
+      "description": "Unguessable token used to build the customer-facing proposal link"
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the proposal link was sent to the customer"
+    },
+    "viewed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the customer first opened the proposal link"
+    },
+    "accepted_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the customer accepted the estimate"
+    },
+    "accepted_by_name": {
+      "type": "string",
+      "description": "Typed name the customer signed with when accepting"
+    },
+    "accepted_signature": {
+      "type": "string",
+      "description": "Captured e-signature text"
+    },
+    "accepted_ip": {
+      "type": "string",
+      "description": "IP address recorded at acceptance for the audit trail"
+    },
+    "declined_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the customer declined the estimate"
+    },
+    "job_id": {
+      "type": "string",
+      "description": "Job that was auto-created when the customer accepted"
     }
   },
   "required": [

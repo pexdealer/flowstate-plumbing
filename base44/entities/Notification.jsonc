@@ -1,0 +1,41 @@
+{
+  "name": "Notification",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "estimate_viewed",
+        "estimate_accepted",
+        "estimate_declined",
+        "job_scheduled",
+        "system"
+      ],
+      "description": "What kind of event this notification represents"
+    },
+    "title": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    },
+    "link": {
+      "type": "string",
+      "description": "In-app path to open when the notification is clicked"
+    },
+    "estimate_id": {
+      "type": "string"
+    },
+    "job_id": {
+      "type": "string"
+    },
+    "read": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "type",
+    "title"
+  ]
+}

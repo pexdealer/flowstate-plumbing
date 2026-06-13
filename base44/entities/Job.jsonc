@@ -1,0 +1,100 @@
+{
+  "name": "Job",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Short job title shown on the calendar and dispatch board"
+    },
+    "estimate_id": {
+      "type": "string",
+      "description": "Estimate this job was created from"
+    },
+    "estimate_number": {
+      "type": "string",
+      "description": "Human-friendly estimate number for reference"
+    },
+    "customer_id": {
+      "type": "string",
+      "description": "Reference to the customer"
+    },
+    "customer_name": {
+      "type": "string"
+    },
+    "customer_phone": {
+      "type": "string"
+    },
+    "customer_address": {
+      "type": "string",
+      "description": "Job site address (used as the calendar event location)"
+    },
+    "job_type": {
+      "type": "string",
+      "enum": [
+        "repair",
+        "installation",
+        "maintenance",
+        "remodel",
+        "new_construction",
+        "emergency",
+        "inspection",
+        "other"
+      ]
+    },
+    "job_description": {
+      "type": "string"
+    },
+    "total": {
+      "type": "number",
+      "description": "Accepted total for the job"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "unscheduled",
+        "scheduled",
+        "dispatched",
+        "in_progress",
+        "completed",
+        "canceled"
+      ],
+      "default": "unscheduled",
+      "description": "Dispatch status of the job"
+    },
+    "assigned_to": {
+      "type": "string",
+      "description": "Email or name of the technician the job is dispatched to"
+    },
+    "scheduled_start": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the job is scheduled to start"
+    },
+    "scheduled_end": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the job is scheduled to end"
+    },
+    "calendar_provider": {
+      "type": "string",
+      "enum": [
+        "none",
+        "google",
+        "outlook",
+        "ics"
+      ],
+      "default": "none",
+      "description": "Which calendar the job was added to"
+    },
+    "calendar_event_id": {
+      "type": "string",
+      "description": "External calendar event id, when a native integration creates it"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "title"
+  ]
+}

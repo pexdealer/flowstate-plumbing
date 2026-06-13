@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useNavigate, Link } from "react-router-dom";
@@ -6,9 +6,14 @@ import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Pencil, CheckCircle, XCircle, Send, Printer } from "lucide-react";
+import {
+  ArrowLeft, Pencil, CheckCircle, XCircle, Send, Copy, Check,
+  Eye, ExternalLink, CalendarPlus, Download, ClipboardList,
+} from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import { generateProposalToken, proposalUrl } from "@/lib/proposal";
+import { calendarLinksForJob, downloadICS, eventFromJob } from "@/lib/calendar";
 
 const statusStyles = {
   draft: "bg-muted text-muted-foreground",
@@ -24,6 +29,7 @@ export default function EstimateDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [copied, setCopied] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["estimate", id],
@@ -32,13 +38,69 @@ export default function EstimateDetail() {
 
   const est = data?.[0];
 
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["estimate", id] });
+    queryClient.invalidateQueries({ queryKey: ["estimates"] });
+  };
+
   const statusMutation = useMutation({
     mutationFn: (status) => base44.entities.Estimate.update(id, { status }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["estimate", id] });
-      queryClient.invalidateQueries({ queryKey: ["estimates"] });
+      invalidate();
       toast.success("Status updated");
     },
+    onError: (e) => toast.error(e?.message || "Could not update status"),
+  });
+
+  // Generate a public link (if needed), mark the estimate sent, and copy the
+  // customer URL to the clipboard so the plumber can paste it into a text/email.
+  const sendMutation = useMutation({
+    mutationFn: async () => {
+      const token = est.public_token || generateProposalToken();
+      await base44.entities.Estimate.update(id, {
+        public_token: token,
+        status: est.status === "approved" || est.status === "declined" ? est.status : "sent",
+        sent_at: new Date().toISOString(),
+      });
+      return token;
+    },
+    onSuccess: async (token) => {
+      invalidate();
+      const url = proposalUrl(token);
+      try {
+        await navigator.clipboard.writeText(url);
+        toast.success("Customer link copied to clipboard");
+      } catch {
+        toast.success("Customer link ready");
+      }
+    },
+    onError: (e) => toast.error(e?.message || "Could not create the link"),
+  });
+
+  // Add the accepted estimate to the dispatch board as a Job, then point the
+  // estimate at it. The calendar buttons work with or without this step.
+  const createJobMutation = useMutation({
+    mutationFn: async () => {
+      const job = await base44.entities.Job.create({
+        title: `${(est.job_type || "Job").replace(/_/g, " ")} — ${est.customer_name || "Customer"}`,
+        estimate_id: est.id,
+        estimate_number: est.estimate_number,
+        customer_id: est.customer_id,
+        customer_name: est.customer_name,
+        customer_address: est.customer_address,
+        job_type: est.job_type,
+        job_description: est.job_description,
+        total: est.total,
+        status: "unscheduled",
+      });
+      await base44.entities.Estimate.update(id, { job_id: job.id });
+      return job;
+    },
+    onSuccess: () => {
+      invalidate();
+      toast.success("Job added to your dispatch board");
+    },
+    onError: (e) => toast.error(e?.message || "Could not create the job"),
   });
 
   if (isLoading) {
@@ -57,6 +119,21 @@ export default function EstimateDetail() {
       </div>
     );
   }
+
+  const accepted = est.status === "approved" || !!est.accepted_at;
+  const link = est.public_token ? proposalUrl(est.public_token) : null;
+  const calendar = calendarLinksForJob(est);
+
+  const copyLink = async () => {
+    if (!link) return;
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      toast.error("Could not copy link");
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -81,11 +158,9 @@ export default function EstimateDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {est.status === "draft" && (
-            <Button variant="outline" className="gap-2 rounded-xl" onClick={() => statusMutation.mutate("sent")}>
-              <Send className="w-4 h-4" /> Mark Sent
-            </Button>
-          )}
+          <Button variant="outline" className="gap-2 rounded-xl" onClick={() => sendMutation.mutate()} disabled={sendMutation.isPending}>
+            <Send className="w-4 h-4" /> {est.sent_at ? "Resend link" : "Send to customer"}
+          </Button>
           {(est.status === "sent" || est.status === "draft") && (
             <>
               <Button variant="outline" className="gap-2 rounded-xl text-emerald-600 border-emerald-200 hover:bg-emerald-50" onClick={() => statusMutation.mutate("approved")}>
@@ -103,6 +178,92 @@ export default function EstimateDetail() {
           </Link>
         </div>
       </motion.div>
+
+      {/* Customer proposal link */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="bg-card rounded-2xl border border-border p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-heading font-semibold text-card-foreground">Customer Proposal</h3>
+          {est.sent_at && (
+            <span className="text-xs text-muted-foreground">Sent {format(new Date(est.sent_at), "MMM d, h:mm a")}</span>
+          )}
+        </div>
+        {link ? (
+          <>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <code className="flex-1 text-xs bg-muted rounded-lg px-3 py-2.5 text-muted-foreground truncate">{link}</code>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="gap-2 rounded-lg" onClick={copyLink}>
+                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copied ? "Copied" : "Copy"}
+                </Button>
+                <a href={link} target="_blank" rel="noopener noreferrer">
+                  <Button variant="outline" size="sm" className="gap-2 rounded-lg">
+                    <ExternalLink className="w-3.5 h-3.5" /> Preview
+                  </Button>
+                </a>
+              </div>
+            </div>
+            {/* Acceptance tracking timeline */}
+            <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs pt-1">
+              <TimelineItem done={!!est.sent_at} label="Sent" at={est.sent_at} icon={Send} />
+              <TimelineItem done={!!est.viewed_at} label="Viewed" at={est.viewed_at} icon={Eye} />
+              <TimelineItem
+                done={accepted}
+                label={est.status === "declined" ? "Declined" : "Accepted"}
+                at={est.accepted_at || est.declined_at}
+                icon={accepted ? CheckCircle : XCircle}
+                tone={est.status === "declined" ? "red" : "emerald"}
+              />
+            </div>
+            {accepted && est.accepted_by_name && (
+              <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                Signed by <strong>{est.accepted_by_name}</strong>
+                {est.accepted_at && ` on ${format(new Date(est.accepted_at), "MMM d, yyyy 'at' h:mm a")}`}.
+              </p>
+            )}
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            Click <strong>Send to customer</strong> to generate a shareable link the customer can open and accept.
+          </p>
+        )}
+      </motion.div>
+
+      {/* Schedule & dispatch — shown once the customer (or you) accept */}
+      {accepted && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-2xl border border-emerald-200 p-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <CalendarPlus className="w-5 h-5 text-emerald-600" />
+            <h3 className="font-heading font-semibold text-card-foreground">Schedule &amp; Dispatch</h3>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Add this job straight to your calendar. The event is pre-filled with the customer, address, and total.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <a href={calendar.google} target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" size="sm" className="gap-2 rounded-lg"><CalendarPlus className="w-3.5 h-3.5" /> Google Calendar</Button>
+            </a>
+            <a href={calendar.outlook} target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" size="sm" className="gap-2 rounded-lg"><CalendarPlus className="w-3.5 h-3.5" /> Outlook</Button>
+            </a>
+            <Button variant="outline" size="sm" className="gap-2 rounded-lg" onClick={() => downloadICS(eventFromJob(est), `${est.estimate_number || "job"}.ics`)}>
+              <Download className="w-3.5 h-3.5" /> Download .ics
+            </Button>
+            {est.job_id ? (
+              <Badge variant="outline" className="gap-1.5 text-emerald-700 border-emerald-200 self-center">
+                <ClipboardList className="w-3.5 h-3.5" /> On dispatch board
+              </Badge>
+            ) : (
+              <Button size="sm" className="gap-2 rounded-lg" onClick={() => createJobMutation.mutate()} disabled={createJobMutation.isPending}>
+                <ClipboardList className="w-3.5 h-3.5" /> Add to dispatch board
+              </Button>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Default time is tomorrow 9:00 AM (2 hrs) until you set one. Heads-up: the calendar event includes the job total — remove it from the description before sharing the invite with the customer.
+          </p>
+        </motion.div>
+      )}
 
       {/* Customer & Job */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-card rounded-2xl border border-border p-6">
@@ -189,5 +350,16 @@ export default function EstimateDetail() {
         </motion.div>
       )}
     </div>
+  );
+}
+
+function TimelineItem({ done, label, at, icon: Icon, tone = "emerald" }) {
+  const color = !done ? "text-muted-foreground/40" : tone === "red" ? "text-red-600" : "text-emerald-600";
+  return (
+    <span className={`flex items-center gap-1.5 ${color}`}>
+      <Icon className="w-3.5 h-3.5" />
+      <span className="font-medium">{label}</span>
+      {done && at && <span className="text-muted-foreground">· {format(new Date(at), "MMM d, h:mm a")}</span>}
+    </span>
   );
 }

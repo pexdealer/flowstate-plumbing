@@ -17,9 +17,20 @@ import Estimates from '@/pages/Estimates';
 import EstimateForm from '@/pages/EstimateForm';
 import EstimateDetail from '@/pages/EstimateDetail';
 import Customers from '@/pages/Customers';
+import PublicProposal from '@/pages/PublicProposal';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+
+  // Customer-facing proposal pages are public — render them before any auth
+  // gating so customers without an account (and before settings load) can view.
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/p/')) {
+    return (
+      <Routes>
+        <Route path="/p/:token" element={<PublicProposal />} />
+      </Routes>
+    );
+  }
 
   // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings || isLoadingAuth) {

@@ -1,7 +1,7 @@
 import React from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, useOutletContext } from "react-router-dom";
 import { FileText, Users, DollarSign, TrendingUp, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import StatCard from "@/components/dashboard/StatCard";
@@ -11,6 +11,8 @@ import CalendarView from "@/components/dashboard/CalendarView";
 import { motion } from "framer-motion";
 
 export default function Dashboard() {
+  const tourRefs = useOutletContext();
+
   const { data: estimates = [], isLoading: loadingEst } = useQuery({
     queryKey: ["estimates"],
     queryFn: () => base44.entities.Estimate.list("-created_date", 100),
@@ -34,6 +36,7 @@ export default function Dashboard() {
     <div className="space-y-8">
       {/* Header */}
       <motion.div
+        ref={tourRefs?.newEstimateRef}
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
@@ -90,13 +93,15 @@ export default function Dashboard() {
         <div className="lg:col-span-3">
           <EstimateChart estimates={estimates} />
         </div>
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2" ref={tourRefs?.recentEstimatesRef}>
           <RecentEstimates estimates={estimates} />
         </div>
       </div>
 
       {/* Calendar */}
-      <CalendarView jobs={jobs} />
+      <div ref={tourRefs?.calendarRef}>
+        <CalendarView jobs={jobs} />
+      </div>
     </div>
   );
 }

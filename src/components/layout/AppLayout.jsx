@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { 
   LayoutDashboard, 
@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { base44 } from "@/api/base44Client";
 import { motion, AnimatePresence } from "framer-motion";
+import TourOverlay from "@/components/onboarding/TourOverlay";
 
 const navItems = [
   { label: "Dashboard", path: "/", icon: LayoutDashboard },
@@ -23,6 +24,14 @@ const navItems = [
 export default function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+
+  // Tour refs — created here so sidebar + dashboard can both attach
+  const tourRefs = {
+    newEstimateRef: useRef(null),
+    recentEstimatesRef: useRef(null),
+    calendarRef: useRef(null),
+    customersNavRef: useRef(null),
+  };
 
   const isActive = (path) => {
     if (path === "/") return location.pathname === "/";
@@ -50,6 +59,7 @@ export default function AppLayout() {
             <Link
               key={item.path}
               to={item.path}
+              ref={item.label === "Customers" ? tourRefs.customersNavRef : undefined}
               className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group ${
                 isActive(item.path)
                   ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-lg shadow-sidebar-primary/25"
@@ -155,9 +165,11 @@ export default function AppLayout() {
       {/* Main Content */}
       <main className="flex-1 lg:ml-64 pt-16 lg:pt-0 min-h-screen">
         <div className="p-4 md:p-8 max-w-7xl mx-auto">
-          <Outlet />
+          <Outlet context={tourRefs} />
         </div>
       </main>
+
+      <TourOverlay refs={tourRefs} />
     </div>
   );
 }

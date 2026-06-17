@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import StatCard from "@/components/dashboard/StatCard";
 import RecentEstimates from "@/components/dashboard/RecentEstimates";
 import EstimateChart from "@/components/dashboard/EstimateChart";
+import CalendarView from "@/components/dashboard/CalendarView";
 import { motion } from "framer-motion";
 
 export default function Dashboard() {
@@ -18,6 +19,11 @@ export default function Dashboard() {
   const { data: customers = [] } = useQuery({
     queryKey: ["customers"],
     queryFn: () => base44.entities.Customer.list("-created_date", 100),
+  });
+
+  const { data: jobs = [] } = useQuery({
+    queryKey: ["jobs"],
+    queryFn: () => base44.entities.Job.list("-scheduled_start", 100),
   });
 
   const totalRevenue = estimates.filter(e => e.status === "approved").reduce((s, e) => s + (e.total || 0), 0);
@@ -88,6 +94,9 @@ export default function Dashboard() {
           <RecentEstimates estimates={estimates} />
         </div>
       </div>
+
+      {/* Calendar */}
+      <CalendarView jobs={jobs} />
     </div>
   );
 }

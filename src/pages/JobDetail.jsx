@@ -238,7 +238,7 @@ export default function JobDetail() {
 
       {/* Invoice section — top level, always visible */}
       <motion.div ref={tourRefs?.jobInvoiceRef} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-2xl border border-border p-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <h3 className="font-heading font-semibold text-card-foreground flex items-center gap-2">
             <Receipt className="w-5 h-5 text-muted-foreground" />
             Invoice
@@ -248,7 +248,7 @@ export default function JobDetail() {
               </Badge>
             )}
           </h3>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {(!job.invoice_id || job.invoice_status === "none") && job.status === "completed" && (
               <Button
                 size="sm"
@@ -257,7 +257,7 @@ export default function JobDetail() {
                 disabled={invoiceMutation.isPending}
               >
                 {invoiceMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileText className="w-3.5 h-3.5" />}
-                Generate Invoice
+                Generate
               </Button>
             )}
             {invoice && invoice.status === "draft" && (
@@ -268,7 +268,7 @@ export default function JobDetail() {
                 disabled={sendInvoiceMutation.isPending}
               >
                 {sendInvoiceMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                Send Invoice
+                Send
               </Button>
             )}
             {invoice && (invoice.status === "sent" || invoice.status === "paid") && (
@@ -293,7 +293,7 @@ export default function JobDetail() {
                       });
                     }}
                   >
-                    <CheckCircle className="w-3.5 h-3.5" /> Mark Paid
+                    <CheckCircle className="w-3.5 h-3.5" /> Paid
                   </Button>
                 )}
               </>

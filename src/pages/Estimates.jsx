@@ -58,8 +58,8 @@ export default function Estimates() {
             className="pl-10 rounded-xl bg-card"
           />
         </div>
-        <Tabs value={statusFilter} onValueChange={setStatusFilter}>
-          <TabsList className="bg-card border border-border">
+        <Tabs value={statusFilter} onValueChange={setStatusFilter} className="overflow-x-auto">
+          <TabsList className="bg-card border border-border whitespace-nowrap">
             <TabsTrigger value="all">All</TabsTrigger>
             <TabsTrigger value="draft">Draft</TabsTrigger>
             <TabsTrigger value="sent">Sent</TabsTrigger>

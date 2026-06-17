@@ -157,9 +157,9 @@ export default function EstimateDetail() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" className="gap-2 rounded-xl" onClick={() => sendMutation.mutate()} disabled={sendMutation.isPending}>
-            <Send className="w-4 h-4" /> {est.sent_at ? "Resend link" : "Send to customer"}
+            <Send className="w-4 h-4" /> {est.sent_at ? "Resend link" : "Send"}
           </Button>
           {(est.status === "sent" || est.status === "draft") && (
             <>

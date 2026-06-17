@@ -32,6 +32,27 @@ const STEPS = [
     refKey: "customersNavRef",
     placement: "right",
   },
+  {
+    id: "job-status",
+    title: "Track Job Progress",
+    description: "Click through each status — from scheduled to completed — to keep your crew and customers in sync.",
+    refKey: "jobStatusRef",
+    placement: "bottom",
+  },
+  {
+    id: "job-photos",
+    title: "Before & After Photos",
+    description: "Snap job-site photos right from your phone. Before/after galleries make quality visible to homeowners.",
+    refKey: "jobPhotosRef",
+    placement: "top",
+  },
+  {
+    id: "job-invoice",
+    title: "Invoice from the Job",
+    description: "Once the job is marked complete, generate an invoice here. It pulls line items from the estimate and gives you a customer-friendly payment link.",
+    refKey: "jobInvoiceRef",
+    placement: "top",
+  },
 ];
 
 export default function TourOverlay({ refs }) {
@@ -67,6 +88,25 @@ export default function TourOverlay({ refs }) {
   const prev = useCallback(() => {
     setStep((s) => Math.max(1, s - 1));
   }, []);
+
+  // Auto-skip steps whose target element isn't in the DOM (e.g. job-detail
+  // features when the user is on the dashboard).
+  useEffect(() => {
+    if (!active) return;
+    const currentStep = STEPS[step - 1];
+    const targetRef = refs?.[currentStep.refKey];
+    if (!targetRef?.current) {
+      // Small delay so React has a chance to render after navigation
+      const t = setTimeout(() => {
+        if (step >= STEPS.length) {
+          finish();
+        } else {
+          setStep((s) => s + 1);
+        }
+      }, 100);
+      return () => clearTimeout(t);
+    }
+  }, [step, active, refs, finish]);
 
   if (!active) return null;
 

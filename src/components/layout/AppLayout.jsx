@@ -25,12 +25,15 @@ export default function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
 
-  // Tour refs — created here so sidebar + dashboard can both attach
+  // Tour refs — created here so sidebar + dashboard + job detail can all attach
   const tourRefs = {
     newEstimateRef: useRef(null),
     recentEstimatesRef: useRef(null),
     calendarRef: useRef(null),
     customersNavRef: useRef(null),
+    jobStatusRef: useRef(null),
+    jobPhotosRef: useRef(null),
+    jobInvoiceRef: useRef(null),
   };
 
   const isActive = (path) => {

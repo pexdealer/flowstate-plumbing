@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, Link, useOutletContext } from "react-router-dom";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +44,7 @@ export default function JobDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const tourRefs = useOutletContext();
   const [tab, setTab] = useState("details");
 
   const { data, isLoading } = useQuery({
@@ -205,7 +206,7 @@ export default function JobDetail() {
       </motion.div>
 
       {/* Status progress */}
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-2xl border border-border p-4">
+      <motion.div ref={tourRefs?.jobStatusRef} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-2xl border border-border p-4">
         <div className="flex flex-wrap items-center gap-1.5">
           {["scheduled", "dispatched", "in_progress", "completed"].map((s, i) => {
             const isActive = job.status === s;
@@ -236,7 +237,7 @@ export default function JobDetail() {
       </motion.div>
 
       {/* Invoice section — top level, always visible */}
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-2xl border border-border p-6">
+      <motion.div ref={tourRefs?.jobInvoiceRef} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-2xl border border-border p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-heading font-semibold text-card-foreground flex items-center gap-2">
             <Receipt className="w-5 h-5 text-muted-foreground" />
@@ -433,7 +434,7 @@ export default function JobDetail() {
       )}
 
       {tab === "media" && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-2xl border border-border p-6">
+        <motion.div ref={tourRefs?.jobPhotosRef} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-2xl border border-border p-6">
           <JobMediaManager
             photosBefore={job.photos_before || []}
             photosAfter={job.photos_after || []}

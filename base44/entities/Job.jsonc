@@ -92,6 +92,36 @@
     },
     "notes": {
       "type": "string"
+    },
+    "photos_before": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Before photos \u2014 array of file URLs"
+    },
+    "photos_after": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "After photos \u2014 array of file URLs"
+    },
+    "invoice_status": {
+      "type": "string",
+      "enum": [
+        "none",
+        "draft",
+        "sent",
+        "paid",
+        "overdue"
+      ],
+      "default": "none",
+      "description": "Invoice lifecycle status"
+    },
+    "invoice_id": {
+      "type": "string",
+      "description": "Linked Invoice record ID"
     }
   },
   "required": [

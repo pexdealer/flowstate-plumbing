@@ -5,6 +5,7 @@ import {
   format, addMonths, subMonths
 } from "date-fns";
 import { ChevronLeft, ChevronRight, CalendarDays, Wrench, Clock } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { motion, AnimatePresence } from "framer-motion";
@@ -159,7 +160,8 @@ export default function CalendarView({ jobs = [] }) {
               ) : (
                 <div className="space-y-2">
                   {selectedJobs.map((job) => (
-                    <div
+                    <Link
+                      to={`/jobs/${job.id}`}
                       key={job.id}
                       className="flex items-start gap-3 p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors"
                     >
@@ -184,7 +186,7 @@ export default function CalendarView({ jobs = [] }) {
                       <Badge variant="secondary" className="text-xs capitalize shrink-0">
                         {statusLabels[job.status] || job.status}
                       </Badge>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               )}

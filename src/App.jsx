@@ -13,21 +13,24 @@ import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
 import AppLayout from '@/components/layout/AppLayout';
 import Dashboard from '@/pages/Dashboard';
+import JobDetail from '@/pages/JobDetail';
 import Estimates from '@/pages/Estimates';
 import EstimateForm from '@/pages/EstimateForm';
 import EstimateDetail from '@/pages/EstimateDetail';
 import Customers from '@/pages/Customers';
 import PublicProposal from '@/pages/PublicProposal';
+import PublicInvoice from '@/pages/PublicInvoice';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
 
-  // Customer-facing proposal pages are public — render them before any auth
-  // gating so customers without an account (and before settings load) can view.
+  // Customer-facing proposal & invoice pages are public — render them before
+  // any auth gating so customers without an account can view.
   if (typeof window !== 'undefined' && window.location.pathname.startsWith('/p/')) {
     return (
       <Routes>
         <Route path="/p/:token" element={<PublicProposal />} />
+        <Route path="/p/invoice/:token" element={<PublicInvoice />} />
       </Routes>
     );
   }
@@ -66,6 +69,7 @@ const AuthenticatedApp = () => {
           <Route path="/estimates/new" element={<EstimateForm />} />
           <Route path="/estimates/:id" element={<EstimateDetail />} />
           <Route path="/estimates/:id/edit" element={<EstimateForm />} />
+          <Route path="/jobs/:id" element={<JobDetail />} />
           <Route path="/customers" element={<Customers />} />
         </Route>
       </Route>

@@ -22,11 +22,11 @@ export default function TourBalloon({
 
     const updatePos = () => {
       const rect = targetRef.current.getBoundingClientRect();
+      const viewportW = window.innerWidth;
+      const viewportH = window.innerHeight;
       const balloonW = Math.min(320, viewportW - 24);
       const balloonH = 160;
       const gap = 16;
-      const viewportW = window.innerWidth;
-      const viewportH = window.innerHeight;
 
       let top, left, arrow;
 

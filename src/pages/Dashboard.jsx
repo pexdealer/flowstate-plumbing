@@ -8,6 +8,7 @@ import StatCard from "@/components/dashboard/StatCard";
 import RecentEstimates from "@/components/dashboard/RecentEstimates";
 import EstimateChart from "@/components/dashboard/EstimateChart";
 import CalendarView from "@/components/dashboard/CalendarView";
+import PendingInvoicesReview from "@/components/dashboard/PendingInvoicesReview";
 import { motion } from "framer-motion";
 
 export default function Dashboard() {
@@ -87,6 +88,9 @@ export default function Dashboard() {
           index={3}
         />
       </div>
+
+      {/* Pending Invoice Review */}
+      <PendingInvoicesReview />
 
       {/* Chart + Recent */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">

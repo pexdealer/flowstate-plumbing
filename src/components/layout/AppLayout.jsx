@@ -8,7 +8,8 @@ import {
   X, 
   Wrench,
   LogOut,
-  ChevronRight
+  ChevronRight,
+  Receipt
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { base44 } from "@/api/base44Client";
@@ -18,6 +19,7 @@ import TourOverlay from "@/components/onboarding/TourOverlay";
 const navItems = [
   { label: "Dashboard", path: "/", icon: LayoutDashboard },
   { label: "Estimates", path: "/estimates", icon: FileText },
+  { label: "Invoices", path: "/invoices", icon: Receipt },
   { label: "Customers", path: "/customers", icon: Users },
 ];
 

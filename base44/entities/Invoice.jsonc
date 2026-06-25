@@ -26,6 +26,10 @@
     "customer_phone": {
       "type": "string"
     },
+    "customer_email": {
+      "type": "string",
+      "description": "Customer email address for sending the invoice"
+    },
     "job_type": {
       "type": "string"
     },
@@ -113,6 +117,20 @@
     },
     "notes": {
       "type": "string"
+    },
+    "photos_before": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Before photos \u2014 array of file URLs"
+    },
+    "photos_after": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "After photos \u2014 array of file URLs"
     }
   },
   "required": [

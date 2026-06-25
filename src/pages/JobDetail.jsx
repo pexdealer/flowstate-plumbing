@@ -76,7 +76,12 @@ export default function JobDetail() {
 
   // Photo mutations
   const photoMutation = useMutation({
-    mutationFn: ({ key, urls }) => base44.entities.Job.update(id, { [key]: urls }),
+    mutationFn: async ({ key, urls }) => {
+      await base44.entities.Job.update(id, { [key]: urls });
+      if (job.invoice_id) {
+        await base44.entities.Invoice.update(job.invoice_id, { [key]: urls });
+      }
+    },
     onSuccess: () => { invalidate(); queryClient.invalidateQueries({ queryKey: ["invoice", job?.invoice_id] }); },
     onError: (e) => toast.error(e?.message || "Could not update photos"),
   });
@@ -102,6 +107,12 @@ export default function JobDetail() {
         const estData = await base44.entities.Estimate.filter({ id: job.estimate_id });
         estimate = estData?.[0];
       }
+      // Fetch customer email
+      let customerEmail = "";
+      if (job.customer_id) {
+        const custData = await base44.entities.Customer.filter({ id: job.customer_id });
+        customerEmail = custData?.[0]?.email || "";
+      }
       const token = generateProposalToken();
       const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
       const inv = await base44.entities.Invoice.create({
@@ -112,8 +123,11 @@ export default function JobDetail() {
         customer_name: job.customer_name || "",
         customer_address: job.customer_address || "",
         customer_phone: job.customer_phone || "",
+        customer_email: customerEmail,
         job_type: job.job_type || "",
         job_description: job.job_description || "",
+        photos_before: job.photos_before || [],
+        photos_after: job.photos_after || [],
         line_items: estimate?.line_items || [],
         subtotal: estimate?.subtotal || job.total || 0,
         markup_percent: estimate?.markup_percent || 0,

@@ -1,0 +1,29 @@
+{
+  "name": "StockLocation",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Location name, e.g. Main Warehouse or Van 1"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "warehouse",
+        "van"
+      ],
+      "default": "warehouse"
+    },
+    "assigned_to": {
+      "type": "string",
+      "description": "Tech email this van belongs to (van locations only)"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

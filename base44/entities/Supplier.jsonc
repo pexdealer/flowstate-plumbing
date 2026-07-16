@@ -1,0 +1,43 @@
+{
+  "name": "Supplier",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Supplier company name"
+    },
+    "contact_name": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "account_number": {
+      "type": "string",
+      "description": "Your account number with this supplier"
+    },
+    "default_terms": {
+      "type": "string",
+      "enum": [
+        "due_on_receipt",
+        "net_15",
+        "net_30",
+        "net_60"
+      ],
+      "default": "net_30"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

@@ -1,0 +1,103 @@
+{
+  "name": "InventoryItem",
+  "type": "object",
+  "properties": {
+    "sku": {
+      "type": "string",
+      "description": "Unique stock-keeping unit; dedupe key for CSV import"
+    },
+    "name": {
+      "type": "string",
+      "description": "Item name, e.g. 3/4in Copper Elbow"
+    },
+    "description": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "pipe_fittings",
+        "pipe",
+        "valves",
+        "water_heaters",
+        "fixtures",
+        "drainage",
+        "gas",
+        "tools_equipment",
+        "consumables",
+        "other"
+      ],
+      "default": "other"
+    },
+    "unit_of_measure": {
+      "type": "string",
+      "enum": [
+        "each",
+        "ft",
+        "box",
+        "roll",
+        "lb",
+        "gal",
+        "kit"
+      ],
+      "default": "each"
+    },
+    "avg_cost": {
+      "type": "number",
+      "description": "Weighted average cost, recalculated on PO receipt"
+    },
+    "last_cost": {
+      "type": "number",
+      "description": "Most recent purchase price"
+    },
+    "sell_price": {
+      "type": "number",
+      "description": "Price charged on jobs/invoices"
+    },
+    "quantity_on_hand": {
+      "type": "number",
+      "default": 0,
+      "description": "Cached total stock. Display cache only — the StockMovement ledger is the source of truth"
+    },
+    "reorder_point": {
+      "type": "number",
+      "description": "Low-stock alert threshold (alert when on hand <= this)"
+    },
+    "reorder_qty": {
+      "type": "number",
+      "description": "Default quantity to suggest on a purchase order"
+    },
+    "preferred_supplier_id": {
+      "type": "string",
+      "description": "Reference to the preferred Supplier"
+    },
+    "supplier_sku": {
+      "type": "string",
+      "description": "The supplier's part number, printed on POs"
+    },
+    "barcode": {
+      "type": "string",
+      "description": "UPC/EAN for future barcode scanning"
+    },
+    "bin_location": {
+      "type": "string",
+      "description": "Where it lives, e.g. Shelf B3 or Van 1 drawer 2"
+    },
+    "taxable": {
+      "type": "boolean",
+      "default": true
+    },
+    "active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Soft-retire flag; items with movement history are never deleted"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "sku",
+    "name"
+  ]
+}

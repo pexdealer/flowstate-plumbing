@@ -18,6 +18,12 @@ import EstimateForm from '@/pages/EstimateForm';
 import EstimateDetail from '@/pages/EstimateDetail';
 import Customers from '@/pages/Customers';
 import PublicProposal from '@/pages/PublicProposal';
+import Inventory from '@/pages/Inventory';
+import InventoryItemDetail from '@/pages/InventoryItemDetail';
+import PurchaseOrders from '@/pages/PurchaseOrders';
+import PurchaseOrderDetail from '@/pages/PurchaseOrderDetail';
+import Jobs from '@/pages/Jobs';
+import JobDetail from '@/pages/JobDetail';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -67,6 +73,12 @@ const AuthenticatedApp = () => {
           <Route path="/estimates/:id" element={<EstimateDetail />} />
           <Route path="/estimates/:id/edit" element={<EstimateForm />} />
           <Route path="/customers" element={<Customers />} />
+          <Route path="/jobs" element={<Jobs />} />
+          <Route path="/jobs/:id" element={<JobDetail />} />
+          <Route path="/inventory" element={<Inventory />} />
+          <Route path="/inventory/:id" element={<InventoryItemDetail />} />
+          <Route path="/purchase-orders" element={<PurchaseOrders />} />
+          <Route path="/purchase-orders/:id" element={<PurchaseOrderDetail />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />

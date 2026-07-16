@@ -1,0 +1,86 @@
+{
+  "name": "StockMovement",
+  "type": "object",
+  "properties": {
+    "item_id": {
+      "type": "string",
+      "description": "Reference to the InventoryItem"
+    },
+    "item_sku": {
+      "type": "string",
+      "description": "Denormalized SKU so history survives item edits"
+    },
+    "item_name": {
+      "type": "string",
+      "description": "Denormalized name so history survives item edits"
+    },
+    "location_id": {
+      "type": "string",
+      "description": "StockLocation reference; blank = Main (single-location mode)"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "initial",
+        "usage",
+        "purchase_receipt",
+        "adjustment",
+        "return",
+        "transfer_in",
+        "transfer_out"
+      ],
+      "description": "What kind of stock movement this is"
+    },
+    "qty_delta": {
+      "type": "number",
+      "description": "Signed quantity change: usage -3, receipt +25"
+    },
+    "qty_after": {
+      "type": "number",
+      "description": "On-hand balance right after this movement, for readable history"
+    },
+    "unit_cost": {
+      "type": "number",
+      "description": "Cost per unit: purchase price on receipts, avg cost at time of usage"
+    },
+    "job_id": {
+      "type": "string",
+      "description": "Job reference for usage/return movements"
+    },
+    "invoice_id": {
+      "type": "string",
+      "description": "Invoice reference (future invoicing integration)"
+    },
+    "purchase_order_id": {
+      "type": "string",
+      "description": "PO reference for purchase_receipt movements"
+    },
+    "reason": {
+      "type": "string",
+      "enum": [
+        "count_correction",
+        "damaged",
+        "lost_stolen",
+        "warranty",
+        "other"
+      ],
+      "description": "Required when type is adjustment"
+    },
+    "reason_note": {
+      "type": "string"
+    },
+    "performed_by": {
+      "type": "string",
+      "description": "Email of the user who made the movement"
+    },
+    "idempotency_key": {
+      "type": "string",
+      "description": "Unique key preventing double-application, e.g. job:{id}:item:{id}:1"
+    }
+  },
+  "required": [
+    "item_id",
+    "type",
+    "qty_delta"
+  ]
+}

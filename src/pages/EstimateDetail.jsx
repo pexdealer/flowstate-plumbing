@@ -90,6 +90,7 @@ export default function EstimateDetail() {
         customer_address: est.customer_address,
         job_type: est.job_type,
         job_description: est.job_description,
+        line_items: est.line_items,
         total: est.total,
         status: "unscheduled",
       });

@@ -2,12 +2,13 @@ import React from "react";
 import { base44 } from "@/api/base44Client";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { FileText, Users, DollarSign, TrendingUp, Plus } from "lucide-react";
+import { FileText, Users, DollarSign, TrendingUp, Plus, Package, AlertTriangle, Boxes } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import StatCard from "@/components/dashboard/StatCard";
 import RecentEstimates from "@/components/dashboard/RecentEstimates";
 import EstimateChart from "@/components/dashboard/EstimateChart";
 import { motion } from "framer-motion";
+import { isLowStock, isNegativeStock, inventoryValue } from "@/lib/inventory";
 
 export default function Dashboard() {
   const { data: estimates = [], isLoading: loadingEst } = useQuery({
@@ -19,6 +20,16 @@ export default function Dashboard() {
     queryKey: ["customers"],
     queryFn: () => base44.entities.Customer.list("-created_date", 100),
   });
+
+  const { data: inventory = [] } = useQuery({
+    queryKey: ["inventory"],
+    queryFn: () => base44.entities.InventoryItem.list("-created_date", 1000),
+  });
+
+  const activeItems = inventory.filter((i) => i.active !== false);
+  const lowStockCount = activeItems.filter(isLowStock).length;
+  const negativeCount = activeItems.filter(isNegativeStock).length;
+  const stockValue = inventoryValue(activeItems);
 
   const totalRevenue = estimates.filter(e => e.status === "approved").reduce((s, e) => s + (e.total || 0), 0);
   const pendingCount = estimates.filter(e => e.status === "sent").length;
@@ -78,6 +89,42 @@ export default function Dashboard() {
           index={3}
         />
       </div>
+
+      {/* Inventory strip */}
+      {activeItems.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Link to="/inventory?tab=low">
+            <StatCard
+              title="Low Stock Items"
+              value={lowStockCount}
+              subtitle={lowStockCount > 0 ? "Ready to reorder" : "All stocked up"}
+              icon={AlertTriangle}
+              color={lowStockCount > 0 ? "warning" : "success"}
+              index={4}
+            />
+          </Link>
+          <Link to="/inventory">
+            <StatCard
+              title="Inventory Value"
+              value={`$${stockValue.toLocaleString("en-US", { maximumFractionDigits: 0 })}`}
+              subtitle={`${activeItems.length} items on hand`}
+              icon={Boxes}
+              color="primary"
+              index={5}
+            />
+          </Link>
+          <Link to="/inventory">
+            <StatCard
+              title="Negative Stock"
+              value={negativeCount}
+              subtitle={negativeCount > 0 ? "Counts need fixing" : "Ledger looks clean"}
+              icon={Package}
+              color={negativeCount > 0 ? "destructive" : "success"}
+              index={6}
+            />
+          </Link>
+        </div>
+      )}
 
       {/* Chart + Recent */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">

@@ -1,14 +1,17 @@
 import React, { useState } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { 
-  LayoutDashboard, 
-  FileText, 
-  Users, 
-  Menu, 
-  X, 
+import {
+  LayoutDashboard,
+  FileText,
+  Users,
+  Menu,
+  X,
   Wrench,
   LogOut,
-  ChevronRight
+  ChevronRight,
+  ClipboardList,
+  Package,
+  ShoppingCart
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { base44 } from "@/api/base44Client";
@@ -17,7 +20,10 @@ import { motion, AnimatePresence } from "framer-motion";
 const navItems = [
   { label: "Dashboard", path: "/", icon: LayoutDashboard },
   { label: "Estimates", path: "/estimates", icon: FileText },
+  { label: "Jobs", path: "/jobs", icon: ClipboardList },
   { label: "Customers", path: "/customers", icon: Users },
+  { label: "Inventory", path: "/inventory", icon: Package },
+  { label: "Purchasing", path: "/purchase-orders", icon: ShoppingCart },
 ];
 
 export default function AppLayout() {

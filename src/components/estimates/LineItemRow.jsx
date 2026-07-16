@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
+import ItemPicker from "@/components/inventory/ItemPicker";
 
 export default function LineItemRow({ item, index, onChange, onRemove }) {
   const handleChange = (field, value) => {
@@ -11,6 +12,21 @@ export default function LineItemRow({ item, index, onChange, onRemove }) {
       updated.total = (parseFloat(updated.quantity) || 0) * (parseFloat(updated.unit_price) || 0);
     }
     onChange(index, updated);
+  };
+
+  // Fill the line from an inventory item and link it for stock deduction later.
+  const handlePick = (inv) => {
+    const quantity = parseFloat(item.quantity) || 1;
+    onChange(index, {
+      ...item,
+      type: "material",
+      item_id: inv.id,
+      sku: inv.sku,
+      description: inv.name,
+      quantity,
+      unit_price: inv.sell_price || 0,
+      total: quantity * (inv.sell_price || 0),
+    });
   };
 
   return (
@@ -28,13 +44,16 @@ export default function LineItemRow({ item, index, onChange, onRemove }) {
           </SelectContent>
         </Select>
       </div>
-      <div className="col-span-12 sm:col-span-4">
-        <Input
-          placeholder="Description"
-          value={item.description || ""}
-          onChange={(e) => handleChange("description", e.target.value)}
-          className="rounded-lg text-sm h-9"
-        />
+      <div className="col-span-12 sm:col-span-4 flex items-center gap-1">
+        <ItemPicker onSelect={handlePick} />
+        <div className="flex-1 min-w-0">
+          <Input
+            placeholder="Description"
+            value={item.description || ""}
+            onChange={(e) => handleChange("description", e.target.value)}
+            className="rounded-lg text-sm h-9"
+          />
+        </div>
       </div>
       <div className="col-span-4 sm:col-span-2">
         <Input

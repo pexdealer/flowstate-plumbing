@@ -13,6 +13,7 @@ import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
 import AppLayout from '@/components/layout/AppLayout';
 import Dashboard from '@/pages/Dashboard';
+import JobDetail from '@/pages/JobDetail';
 import Estimates from '@/pages/Estimates';
 import EstimateForm from '@/pages/EstimateForm';
 import EstimateDetail from '@/pages/EstimateDetail';
@@ -23,21 +24,22 @@ import InventoryItemDetail from '@/pages/InventoryItemDetail';
 import PurchaseOrders from '@/pages/PurchaseOrders';
 import PurchaseOrderDetail from '@/pages/PurchaseOrderDetail';
 import Jobs from '@/pages/Jobs';
-import JobDetail from '@/pages/JobDetail';
+import PublicInvoice from '@/pages/PublicInvoice';
+import Invoices from '@/pages/Invoices';
+import InvoiceDetail from '@/pages/InvoiceDetail';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
-
-  // Customer-facing proposal pages are public — render them before any auth
-  // gating so customers without an account (and before settings load) can view.
+  // Customer-facing proposal & invoice pages are public — render them before
+  // any auth gating so customers without an account can view.
   if (typeof window !== 'undefined' && window.location.pathname.startsWith('/p/')) {
     return (
       <Routes>
         <Route path="/p/:token" element={<PublicProposal />} />
+        <Route path="/p/invoice/:token" element={<PublicInvoice />} />
       </Routes>
     );
   }
-
   // Show loading spinner while checking app public settings or auth
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (
@@ -46,7 +48,6 @@ const AuthenticatedApp = () => {
       </div>
     );
   }
-
   // Handle authentication errors
   if (authError) {
     if (authError.type === 'user_not_registered') {
@@ -57,7 +58,6 @@ const AuthenticatedApp = () => {
       return null;
     }
   }
-
   // Render the main app
   return (
     <Routes>
@@ -72,13 +72,15 @@ const AuthenticatedApp = () => {
           <Route path="/estimates/new" element={<EstimateForm />} />
           <Route path="/estimates/:id" element={<EstimateDetail />} />
           <Route path="/estimates/:id/edit" element={<EstimateForm />} />
-          <Route path="/customers" element={<Customers />} />
           <Route path="/jobs" element={<Jobs />} />
           <Route path="/jobs/:id" element={<JobDetail />} />
+          <Route path="/customers" element={<Customers />} />
           <Route path="/inventory" element={<Inventory />} />
           <Route path="/inventory/:id" element={<InventoryItemDetail />} />
           <Route path="/purchase-orders" element={<PurchaseOrders />} />
           <Route path="/purchase-orders/:id" element={<PurchaseOrderDetail />} />
+          <Route path="/invoices" element={<Invoices />} />
+          <Route path="/invoices/:id" element={<InvoiceDetail />} />
         </Route>
       </Route>
       <Route path="*" element={<PageNotFound />} />
@@ -86,9 +88,7 @@ const AuthenticatedApp = () => {
   );
 };
 
-
 function App() {
-
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>

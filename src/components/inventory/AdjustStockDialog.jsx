@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { ADJUSTMENT_REASONS, applyMovements } from "@/lib/inventory";
+import { useAuth } from "@/lib/AuthContext";
+import { ADJUSTMENT_REASONS, applyMovements, movementFailures } from "@/lib/inventory";
 
 // Manual stock adjustment: enter the NEW counted quantity; the dialog shows
 // the resulting +/- delta and requires a reason for the audit trail.
@@ -16,6 +17,7 @@ export default function AdjustStockDialog({ open, onOpenChange, item }) {
   const [reason, setReason] = useState("count_correction");
   const [note, setNote] = useState("");
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   useEffect(() => {
     if (open && item) {
@@ -30,16 +32,23 @@ export default function AdjustStockDialog({ open, onOpenChange, item }) {
   const delta = isNaN(parsed) ? 0 : parsed - onHand;
 
   const adjustMutation = useMutation({
-    mutationFn: () =>
-      applyMovements([
-        {
-          item_id: item.id,
-          type: "adjustment",
-          qty_delta: delta,
-          reason,
-          reason_note: note || undefined,
-        },
-      ]),
+    mutationFn: async () => {
+      const res = await applyMovements(
+        [
+          {
+            item_id: item.id,
+            type: "adjustment",
+            qty_delta: delta,
+            reason,
+            reason_note: note || undefined,
+          },
+        ],
+        { performedBy: user?.email }
+      );
+      const failed = movementFailures(res);
+      if (failed.length) throw new Error(failed[0].error || "Adjustment failed");
+      return res;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       queryClient.invalidateQueries({ queryKey: ["movements", item?.id] });

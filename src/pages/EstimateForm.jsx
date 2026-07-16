@@ -53,13 +53,13 @@ export default function EstimateForm() {
 
   const { data: existingEstimate } = useQuery({
     queryKey: ["estimate", id],
-    queryFn: () => base44.entities.Estimate.filter({ id }),
+    queryFn: () => base44.entities.Estimate.get(id).catch(() => null),
     enabled: isEdit,
   });
 
   useEffect(() => {
-    if (existingEstimate && existingEstimate.length > 0) {
-      const est = existingEstimate[0];
+    if (existingEstimate) {
+      const est = existingEstimate;
       setForm({
         estimate_number: est.estimate_number || "",
         customer_id: est.customer_id || "",

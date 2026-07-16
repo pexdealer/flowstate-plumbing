@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { applyMovements } from "@/lib/inventory";
+import { useAuth } from "@/lib/AuthContext";
+import { applyMovements, movementFailures } from "@/lib/inventory";
 
 // Receive stock against a PO. Partial receipts are fine — the PO flips to
 // partially_received until every line is complete. Receipts are the only
@@ -13,6 +14,7 @@ import { applyMovements } from "@/lib/inventory";
 export default function ReceivePODialog({ open, onOpenChange, po }) {
   const [received, setReceived] = useState({});
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   useEffect(() => {
     if (open && po) {
@@ -29,7 +31,7 @@ export default function ReceivePODialog({ open, onOpenChange, po }) {
     mutationFn: async () => {
       const lines = po.line_items || [];
       const movements = [];
-      const updatedLines = lines.map((line, i) => {
+      lines.forEach((line, i) => {
         const qty = parseFloat(received[i]) || 0;
         if (qty > 0 && line.item_id) {
           movements.push({
@@ -38,14 +40,26 @@ export default function ReceivePODialog({ open, onOpenChange, po }) {
             qty_delta: qty,
             unit_cost: line.unit_cost,
             purchase_order_id: po.id,
-            idempotency_key: `po:${po.id}:line:${i}:rcv:${(line.qty_received || 0) + qty}`,
+            // Keyed by item + cumulative total so editing/removing draft lines
+            // can't shift the key, and a retry of the same receipt is caught.
+            idempotency_key: `po:${po.id}:item:${line.item_id}:rcv:${(line.qty_received || 0) + qty}`,
           });
         }
-        return { ...line, qty_received: (line.qty_received || 0) + qty };
       });
 
       if (!movements.length) throw new Error("Nothing to receive");
-      await applyMovements(movements);
+      const res = await applyMovements(movements, { performedBy: user?.email });
+      const failedIds = new Set(movementFailures(res).map((f) => f.item_id));
+
+      // Only record receipt on lines whose stock movement actually landed —
+      // keeps the PO honest if an item write failed.
+      const updatedLines = lines.map((line, i) => {
+        const qty = parseFloat(received[i]) || 0;
+        if (qty > 0 && line.item_id && !failedIds.has(line.item_id)) {
+          return { ...line, qty_received: (line.qty_received || 0) + qty };
+        }
+        return line;
+      });
 
       const complete = updatedLines.every((l) => (l.qty_received || 0) >= (l.qty_ordered || 0));
       await base44.entities.PurchaseOrder.update(po.id, {
@@ -53,13 +67,17 @@ export default function ReceivePODialog({ open, onOpenChange, po }) {
         status: complete ? "received" : "partially_received",
         received_at: complete ? new Date().toISOString() : po.received_at,
       });
-      return complete;
+      return { complete, failedCount: failedIds.size };
     },
-    onSuccess: (complete) => {
+    onSuccess: ({ complete, failedCount }) => {
       queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
       queryClient.invalidateQueries({ queryKey: ["purchase-order", po?.id] });
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
-      toast.success(complete ? "PO fully received — stock updated" : "Partial receipt recorded");
+      if (failedCount > 0) {
+        toast.warning(`${failedCount} line${failedCount > 1 ? "s" : ""} failed to receive — check and retry those.`, { duration: 8000 });
+      } else {
+        toast.success(complete ? "PO fully received — stock updated" : "Partial receipt recorded");
+      }
       onOpenChange(false);
     },
     onError: (e) => toast.error(e?.message || "Could not receive stock"),

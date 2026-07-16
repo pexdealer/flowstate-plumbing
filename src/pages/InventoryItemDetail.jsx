@@ -29,11 +29,10 @@ export default function InventoryItemDetail() {
   const [editOpen, setEditOpen] = useState(false);
   const [adjustOpen, setAdjustOpen] = useState(false);
 
-  const { data, isLoading } = useQuery({
+  const { data: item, isLoading } = useQuery({
     queryKey: ["inventory", id],
-    queryFn: () => base44.entities.InventoryItem.filter({ id }),
+    queryFn: () => base44.entities.InventoryItem.get(id).catch(() => null),
   });
-  const item = data?.[0];
 
   const { data: movements = [] } = useQuery({
     queryKey: ["movements", id],

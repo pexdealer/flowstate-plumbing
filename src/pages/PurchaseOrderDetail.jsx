@@ -6,6 +6,8 @@ import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Send, PackageCheck, XCircle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -18,11 +20,10 @@ export default function PurchaseOrderDetail() {
   const queryClient = useQueryClient();
   const [receiveOpen, setReceiveOpen] = useState(false);
 
-  const { data, isLoading } = useQuery({
+  const { data: po, isLoading } = useQuery({
     queryKey: ["purchase-order", id],
-    queryFn: () => base44.entities.PurchaseOrder.filter({ id }),
+    queryFn: () => base44.entities.PurchaseOrder.get(id).catch(() => null),
   });
-  const po = data?.[0];
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["purchase-order", id] });
@@ -123,6 +124,41 @@ export default function PurchaseOrderDetail() {
         </div>
       </motion.div>
 
+      {/* Order details — editable while draft */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="bg-card rounded-2xl border border-border p-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <Label>Expected Delivery</Label>
+            {isDraft ? (
+              <Input
+                type="date"
+                defaultValue={po.expected_date || ""}
+                onBlur={(e) => e.target.value !== (po.expected_date || "") && updateMutation.mutate({ expected_date: e.target.value })}
+                className="rounded-lg mt-1"
+              />
+            ) : (
+              <p className="text-sm text-card-foreground mt-2">
+                {po.expected_date ? format(new Date(po.expected_date), "MMM d, yyyy") : "—"}
+              </p>
+            )}
+          </div>
+          <div>
+            <Label>Notes for Supplier</Label>
+            {isDraft ? (
+              <Textarea
+                defaultValue={po.notes || ""}
+                onBlur={(e) => e.target.value !== (po.notes || "") && updateMutation.mutate({ notes: e.target.value })}
+                rows={2}
+                className="rounded-lg mt-1"
+                placeholder="Will call for pickup Friday..."
+              />
+            ) : (
+              <p className="text-sm text-card-foreground mt-2 whitespace-pre-wrap">{po.notes || "—"}</p>
+            )}
+          </div>
+        </div>
+      </motion.div>
+
       {/* Lines */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-card rounded-2xl border border-border overflow-hidden">
         <div className="overflow-x-auto">
@@ -198,13 +234,6 @@ export default function PurchaseOrderDetail() {
           </div>
         </div>
       </motion.div>
-
-      {po.notes && (
-        <div className="bg-card rounded-2xl border border-border p-6">
-          <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Notes</h3>
-          <p className="text-sm text-card-foreground whitespace-pre-wrap">{po.notes}</p>
-        </div>
-      )}
 
       <ReceivePODialog open={receiveOpen} onOpenChange={setReceiveOpen} po={po} />
     </div>

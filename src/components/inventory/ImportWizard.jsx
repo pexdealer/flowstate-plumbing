@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Upload, Download, Loader2, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/AuthContext";
 import { applyMovements } from "@/lib/inventory";
 
 // Bulk import: upload a CSV or Excel file → Base44's ExtractDataFromUploadedFile
@@ -32,6 +33,7 @@ const EXTRACT_SCHEMA = {
           reorder_point: { type: "number" },
           reorder_qty: { type: "number" },
           supplier_sku: { type: "string" },
+          barcode: { type: "string" },
           bin_location: { type: "string" },
         },
       },
@@ -40,9 +42,9 @@ const EXTRACT_SCHEMA = {
 };
 
 const TEMPLATE_CSV =
-  "sku,name,category,unit_of_measure,cost,sell_price,quantity,reorder_point,reorder_qty,supplier_sku,bin_location\n" +
-  'CU-EL-34,"3/4in Copper Elbow",pipe_fittings,each,1.25,4.50,40,20,50,SUP-8812,Shelf B3\n' +
-  'PVC-40-2,"2in PVC Sch40 Pipe",pipe,ft,0.85,2.75,120,60,100,,Rack A1\n';
+  "sku,name,category,unit_of_measure,cost,sell_price,quantity,reorder_point,reorder_qty,supplier_sku,barcode,bin_location\n" +
+  'CU-EL-34,"3/4in Copper Elbow",pipe_fittings,each,1.25,4.50,40,20,50,SUP-8812,,Shelf B3\n' +
+  'PVC-40-2,"2in PVC Sch40 Pipe",pipe,ft,0.85,2.75,120,60,100,,,Rack A1\n';
 
 export default function ImportWizard({ open, onOpenChange }) {
   const [step, setStep] = useState("upload"); // upload | preview | done
@@ -52,6 +54,7 @@ export default function ImportWizard({ open, onOpenChange }) {
   const [importing, setImporting] = useState(false);
   const [summary, setSummary] = useState(null);
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const reset = () => {
     setStep("upload");
@@ -85,6 +88,11 @@ export default function ImportWizard({ open, onOpenChange }) {
         file_url,
         json_schema: EXTRACT_SCHEMA,
       });
+      // Surface a real extraction failure instead of a misleading "no rows".
+      if (extracted?.status === "error") {
+        toast.error(extracted.details || "The file could not be read — try the CSV template format");
+        return;
+      }
       const parsed = extracted?.output?.items || extracted?.items || [];
       if (!parsed.length) {
         toast.error("No rows found — check the file matches the template columns");
@@ -120,50 +128,80 @@ export default function ImportWizard({ open, onOpenChange }) {
     }
   };
 
+  const rowFields = (row) => ({
+    name: String(row.name).trim(),
+    category: row.category || undefined,
+    unit_of_measure: row.unit_of_measure || undefined,
+    avg_cost: row.cost ?? undefined,
+    sell_price: row.sell_price ?? undefined,
+    reorder_point: row.reorder_point ?? undefined,
+    reorder_qty: row.reorder_qty ?? undefined,
+    supplier_sku: row.supplier_sku || undefined,
+    barcode: row.barcode || undefined,
+    bin_location: row.bin_location || undefined,
+  });
+
   const runImport = async () => {
     setImporting(true);
     let created = 0;
     let updated = 0;
-    let failed = 0;
-    for (const row of rows) {
-      if (row.status === "error") continue;
+    const failedSkus = [];
+    const performedBy = user?.email;
+
+    // New rows: one bulkCreate, then one movement batch for starting stock.
+    const newRows = rows.filter((r) => r.status === "new");
+    if (newRows.length) {
+      const payloads = newRows.map((row) => ({
+        sku: row.sku,
+        ...rowFields(row),
+        quantity_on_hand: 0,
+        active: true,
+      }));
+      let createdItems = null;
       try {
-        const fields = {
-          name: String(row.name).trim(),
-          category: row.category || undefined,
-          unit_of_measure: row.unit_of_measure || undefined,
-          avg_cost: row.cost ?? undefined,
-          sell_price: row.sell_price ?? undefined,
-          reorder_point: row.reorder_point ?? undefined,
-          reorder_qty: row.reorder_qty ?? undefined,
-          supplier_sku: row.supplier_sku || undefined,
-          bin_location: row.bin_location || undefined,
-        };
-        if (row.status === "new") {
-          const item = await base44.entities.InventoryItem.create({
-            sku: row.sku,
-            ...fields,
-            quantity_on_hand: 0,
-            active: true,
-          });
-          if (row.quantity) {
-            await applyMovements([
-              {
-                item_id: item.id,
-                type: "initial",
-                qty_delta: row.quantity,
-                unit_cost: row.cost ?? undefined,
-                idempotency_key: `initial:${item.id}`,
-              },
-            ]);
+        createdItems = await base44.entities.InventoryItem.bulkCreate(payloads);
+      } catch {
+        createdItems = null; // fall through to per-row creation below
+      }
+      if (!Array.isArray(createdItems) || createdItems.length !== payloads.length) {
+        // Fallback: create one-by-one so partial failures are attributable.
+        createdItems = [];
+        for (const payload of payloads) {
+          try {
+            createdItems.push(await base44.entities.InventoryItem.create(payload));
+          } catch {
+            createdItems.push(null);
+            failedSkus.push(payload.sku);
           }
-          created += 1;
-        } else {
-          await base44.entities.InventoryItem.update(row.existing.id, fields);
-          if (fullCount && row.quantity != null) {
-            const delta = row.quantity - (row.existing.quantity_on_hand || 0);
-            if (delta !== 0) {
-              await applyMovements([
+        }
+      }
+      const movements = [];
+      createdItems.forEach((item, i) => {
+        if (!item) return;
+        created += 1;
+        if (newRows[i].quantity) {
+          movements.push({
+            item_id: item.id,
+            type: "initial",
+            qty_delta: newRows[i].quantity,
+            unit_cost: newRows[i].cost ?? undefined,
+            idempotency_key: `initial:${item.id}`,
+            _item: item,
+          });
+        }
+      });
+      if (movements.length) await applyMovements(movements, { performedBy });
+    }
+
+    // Updates: per-row so each failure maps to a SKU.
+    for (const row of rows.filter((r) => r.status === "update")) {
+      try {
+        await base44.entities.InventoryItem.update(row.existing.id, rowFields(row));
+        if (fullCount && row.quantity != null) {
+          const delta = row.quantity - (row.existing.quantity_on_hand || 0);
+          if (delta !== 0) {
+            await applyMovements(
+              [
                 {
                   item_id: row.existing.id,
                   type: "adjustment",
@@ -171,17 +209,25 @@ export default function ImportWizard({ open, onOpenChange }) {
                   reason: "count_correction",
                   reason_note: "CSV import full count",
                 },
-              ]);
-            }
+              ],
+              { performedBy }
+            );
           }
-          updated += 1;
         }
+        updated += 1;
       } catch {
-        failed += 1;
+        failedSkus.push(row.sku);
       }
     }
+
     setImporting(false);
-    setSummary({ created, updated, failed, skipped: rows.filter((r) => r.status === "error").length });
+    setSummary({
+      created,
+      updated,
+      failed: failedSkus.length,
+      failedSkus,
+      skipped: rows.filter((r) => r.status === "error").length,
+    });
     setStep("done");
     queryClient.invalidateQueries({ queryKey: ["inventory"] });
   };
@@ -278,6 +324,11 @@ export default function ImportWizard({ open, onOpenChange }) {
               {summary.skipped > 0 && `, ${summary.skipped} skipped`}
               {summary.failed > 0 && `, ${summary.failed} failed`}
             </p>
+            {summary.failedSkus?.length > 0 && (
+              <p className="text-sm text-red-600">
+                Failed SKUs: {summary.failedSkus.join(", ")}
+              </p>
+            )}
             <Button onClick={() => close(false)}>Done</Button>
           </div>
         )}

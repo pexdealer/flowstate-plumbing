@@ -26,9 +26,17 @@ How stock tracking works and the optional Builder hardening step.
 ## Optional hardening: backend functions (Base44 Builder)
 
 The frontend calls `base44.functions.invoke("applyStockMovements", ...)` first
-and falls back to direct entity writes if the function doesn't exist. The
-fallback is fine for one company with light concurrency; create these two
-functions in the Builder when multiple people are hitting stock at once.
+and falls back to direct entity writes **only when the function is missing**
+(404/not-found) — real backend errors are rethrown, never masked. Idempotency
+keys encode the logical change (e.g. `job:{id}:item:{id}:from:{x}:to:{y}`), so
+retries are safe. All movement paths record `performed_by`. The fallback is
+fine for one company with light concurrency; create these two functions in the
+Builder when multiple people are hitting stock at once.
+
+There's also an in-app repair: the ⟳ button on the Inventory page runs
+`reconcileFromLedger()` client-side — it rebuilds every cached quantity from
+the movement ledger and reports what it fixed. The backend `reconcileStock`
+below is its scheduled/nightly counterpart.
 
 ### `applyStockMovements`
 

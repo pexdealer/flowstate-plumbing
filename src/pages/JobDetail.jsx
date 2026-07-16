@@ -6,7 +6,7 @@ import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, Trash2, PackageCheck, CalendarPlus, Download, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Plus, Minus, Trash2, PackageCheck, CalendarPlus, CalendarClock, Download, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/AuthContext";
@@ -25,17 +25,26 @@ export default function JobDetail() {
   const { user } = useAuth();
   const [lines, setLines] = useState([]);
   const [dirty, setDirty] = useState(false);
+  const [schedStart, setSchedStart] = useState("");
+  const [schedHours, setSchedHours] = useState("2");
 
-  const { data, isLoading } = useQuery({
+  const { data: job, isLoading } = useQuery({
     queryKey: ["job", id],
-    queryFn: () => base44.entities.Job.filter({ id }),
+    queryFn: () => base44.entities.Job.get(id).catch(() => null),
   });
-  const job = data?.[0];
 
   useEffect(() => {
     if (job) {
       setLines(job.line_items?.length ? job.line_items : []);
       setDirty(false);
+      if (job.scheduled_start) {
+        setSchedStart(format(new Date(job.scheduled_start), "yyyy-MM-dd'T'HH:mm"));
+        if (job.scheduled_end) {
+          const hrs =
+            (new Date(job.scheduled_end) - new Date(job.scheduled_start)) / 3600000;
+          if (hrs > 0) setSchedHours(String(hrs));
+        }
+      }
     }
   }, [job]);
 
@@ -54,6 +63,25 @@ export default function JobDetail() {
     onError: (e) => toast.error(e?.message || "Could not update job"),
   });
 
+  // Save the schedule window; an unscheduled job auto-bumps to scheduled so
+  // the board reflects reality without an extra click.
+  const scheduleMutation = useMutation({
+    mutationFn: () => {
+      const start = new Date(schedStart);
+      const end = new Date(start.getTime() + (parseFloat(schedHours) || 2) * 3600000);
+      return base44.entities.Job.update(id, {
+        scheduled_start: start.toISOString(),
+        scheduled_end: end.toISOString(),
+        status: job.status === "unscheduled" || !job.status ? "scheduled" : job.status,
+      });
+    },
+    onSuccess: () => {
+      invalidate();
+      toast.success("Schedule saved — calendar links updated");
+    },
+    onError: (e) => toast.error(e?.message || "Could not save schedule"),
+  });
+
   // Save parts list + confirm usage: persists the lines, then reconciles stock
   // against what was previously deducted (only differences move).
   const usePartsMutation = useMutation({
@@ -64,6 +92,13 @@ export default function JobDetail() {
     },
     onSuccess: (result) => {
       invalidate();
+      if (result.failed?.length) {
+        toast.error(
+          `${result.failed.length} item${result.failed.length > 1 ? "s" : ""} failed to update — parts are NOT confirmed. Check the items and try again.`,
+          { duration: 8000 }
+        );
+        return; // stay dirty so the button invites a retry
+      }
       setDirty(false);
       if (result.oversold?.length) {
         const names = result.oversold.map((o) => `${o.name} (short ${o.short})`).join(", ");
@@ -169,6 +204,42 @@ export default function JobDetail() {
             <p className="text-sm text-card-foreground">{job.job_description || "—"}</p>
           </div>
         </div>
+        {/* Schedule */}
+        <div className="pt-2 border-t border-border">
+          <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
+            <CalendarClock className="w-3.5 h-3.5" /> Schedule
+          </h3>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Input
+              type="datetime-local"
+              value={schedStart}
+              onChange={(e) => setSchedStart(e.target.value)}
+              className="rounded-lg sm:w-56"
+            />
+            <Select value={schedHours} onValueChange={setSchedHours}>
+              <SelectTrigger className="rounded-lg sm:w-32"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {[1, 1.5, 2, 3, 4, 6, 8].map((h) => (
+                  <SelectItem key={h} value={String(h)}>{h} hr{h > 1 ? "s" : ""}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              className="rounded-lg"
+              onClick={() => scheduleMutation.mutate()}
+              disabled={!schedStart || scheduleMutation.isPending}
+            >
+              {scheduleMutation.isPending ? "Saving..." : "Save Schedule"}
+            </Button>
+          </div>
+          {!job.scheduled_start && (
+            <p className="text-xs text-muted-foreground mt-2">
+              Unscheduled — calendar buttons below default to tomorrow 9:00 AM until you set a time.
+            </p>
+          )}
+        </div>
+
         <div className="flex flex-wrap gap-2 pt-2 border-t border-border">
           <a href={calendar.google} target="_blank" rel="noopener noreferrer">
             <Button variant="outline" size="sm" className="gap-2 rounded-lg"><CalendarPlus className="w-3.5 h-3.5" /> Google Calendar</Button>
@@ -218,18 +289,39 @@ export default function JobDetail() {
                   />
                   {line.sku && <span className="text-xs text-muted-foreground font-mono ml-1">{line.sku}</span>}
                 </div>
-                <div className="col-span-4 sm:col-span-2">
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.5"
-                    value={line.quantity ?? ""}
-                    onChange={(e) => updateLine(i, { quantity: parseFloat(e.target.value) || 0 })}
-                    className="rounded-lg text-sm h-10 text-right"
-                    placeholder="Qty"
-                  />
+                <div className="col-span-6 sm:col-span-2">
+                  {/* Thumb-friendly stepper for techs in the field */}
+                  <div className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-10 w-10 rounded-lg flex-shrink-0"
+                      onClick={() => updateLine(i, { quantity: Math.max((parseFloat(line.quantity) || 0) - 1, 0) })}
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </Button>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      value={line.quantity ?? ""}
+                      onChange={(e) => updateLine(i, { quantity: parseFloat(e.target.value) || 0 })}
+                      className="rounded-lg text-sm h-10 text-center"
+                      placeholder="Qty"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="h-10 w-10 rounded-lg flex-shrink-0"
+                      onClick={() => updateLine(i, { quantity: (parseFloat(line.quantity) || 0) + 1 })}
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="col-span-4 sm:col-span-2">
+                <div className="col-span-3 sm:col-span-2">
                   <Input
                     type="number"
                     min="0"
@@ -240,7 +332,7 @@ export default function JobDetail() {
                     placeholder="$"
                   />
                 </div>
-                <div className="col-span-3 sm:col-span-1 text-right text-sm font-medium">
+                <div className="col-span-2 sm:col-span-1 text-right text-sm font-medium">
                   ${(line.total || 0).toFixed(2)}
                 </div>
                 <div className="col-span-1 flex justify-center">

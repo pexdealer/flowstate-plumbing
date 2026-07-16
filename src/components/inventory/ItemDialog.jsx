@@ -177,7 +177,17 @@ export default function ItemDialog({ open, onOpenChange, item }) {
               />
             </div>
           )}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <Label>Barcode / UPC</Label>
+              <Input value={form.barcode} onChange={set("barcode")} placeholder="Scan-ready for later" />
+            </div>
+            <div>
+              <Label>Bin / Location</Label>
+              <Input value={form.bin_location} onChange={set("bin_location")} placeholder="Shelf B3" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label>Preferred Supplier</Label>
               <Select value={form.preferred_supplier_id || "none"} onValueChange={(v) => setForm({ ...form, preferred_supplier_id: v === "none" ? "" : v })}>
@@ -193,10 +203,6 @@ export default function ItemDialog({ open, onOpenChange, item }) {
             <div>
               <Label>Supplier SKU</Label>
               <Input value={form.supplier_sku} onChange={set("supplier_sku")} />
-            </div>
-            <div>
-              <Label>Bin / Location</Label>
-              <Input value={form.bin_location} onChange={set("bin_location")} placeholder="Shelf B3" />
             </div>
           </div>
           <div>

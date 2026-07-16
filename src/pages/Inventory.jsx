@@ -8,12 +8,19 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Upload, Package, ShoppingCart, AlertTriangle } from "lucide-react";
+import { Plus, Search, Upload, Package, ShoppingCart, AlertTriangle, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import ItemDialog from "@/components/inventory/ItemDialog";
 import ImportWizard from "@/components/inventory/ImportWizard";
-import { CATEGORY_LABELS, isLowStock, isNegativeStock, suggestedReorderQty, inventoryValue } from "@/lib/inventory";
+import {
+  CATEGORY_LABELS,
+  isLowStock,
+  isNegativeStock,
+  suggestedReorderQty,
+  inventoryValue,
+  reconcileFromLedger,
+} from "@/lib/inventory";
 
 export default function Inventory() {
   const [search, setSearch] = useState("");
@@ -56,10 +63,13 @@ export default function Inventory() {
         const key = item.preferred_supplier_id || "none";
         (groups[key] = groups[key] || []).push(item);
       }
-      const existing = await base44.entities.PurchaseOrder.list("-created_date", 1);
-      let seq = existing.length
-        ? parseInt(String(existing[0].po_number).replace(/\D/g, ""), 10) || 0
-        : 0;
+      // Scan recent POs for the max numeric suffix rather than trusting just
+      // the latest row — tolerant of out-of-order creation and edits.
+      const existing = await base44.entities.PurchaseOrder.list("-created_date", 200);
+      let seq = existing.reduce(
+        (max, p) => Math.max(max, parseInt(String(p.po_number).replace(/\D/g, ""), 10) || 0),
+        0
+      );
       const suppliers = await base44.entities.Supplier.list("-created_date", 200);
       const created = [];
       for (const [supplierId, groupItems] of Object.entries(groups)) {
@@ -101,6 +111,26 @@ export default function Inventory() {
     onError: (e) => toast.error(e?.message || "Could not create purchase order"),
   });
 
+  // Rebuild cached quantities from the movement ledger and repair any drift.
+  const reconcileMutation = useMutation({
+    mutationFn: reconcileFromLedger,
+    onSuccess: ({ checked, repaired, drift }) => {
+      queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      if (repaired === 0) {
+        toast.success(`Checked ${checked} items — counts match the ledger`);
+      } else {
+        toast.warning(
+          `Repaired ${repaired} item${repaired > 1 ? "s" : ""}: ${drift
+            .slice(0, 5)
+            .map((d) => `${d.sku} ${d.cached}→${d.ledger}`)
+            .join(", ")}${drift.length > 5 ? "…" : ""}`,
+          { duration: 8000 }
+        );
+      }
+    },
+    onError: (e) => toast.error(e?.message || "Reconcile failed"),
+  });
+
   const qtyBadge = (item) => {
     const qty = item.quantity_on_hand || 0;
     if (qty < 0) return <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200">{qty}</Badge>;
@@ -123,6 +153,16 @@ export default function Inventory() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            className="rounded-xl"
+            title="Recount from ledger — repairs any drift in cached quantities"
+            onClick={() => reconcileMutation.mutate()}
+            disabled={reconcileMutation.isPending}
+          >
+            <RefreshCw className={`w-4 h-4 ${reconcileMutation.isPending ? "animate-spin" : ""}`} />
+          </Button>
           <Button variant="outline" className="gap-2 rounded-xl" onClick={() => setImportOpen(true)}>
             <Upload className="w-4 h-4" /> Import
           </Button>

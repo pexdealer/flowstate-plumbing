@@ -51,6 +51,14 @@
               "other"
             ]
           },
+          "item_id": {
+            "type": "string",
+            "description": "Optional link to an InventoryItem for stock deduction"
+          },
+          "sku": {
+            "type": "string",
+            "description": "SKU of the linked inventory item"
+          },
           "description": {
             "type": "string"
           },

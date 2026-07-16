@@ -31,12 +31,10 @@ export default function EstimateDetail() {
   const queryClient = useQueryClient();
   const [copied, setCopied] = useState(false);
 
-  const { data, isLoading } = useQuery({
+  const { data: est, isLoading } = useQuery({
     queryKey: ["estimate", id],
-    queryFn: () => base44.entities.Estimate.filter({ id }),
+    queryFn: () => base44.entities.Estimate.get(id).catch(() => null),
   });
-
-  const est = data?.[0];
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ["estimate", id] });
@@ -90,6 +88,7 @@ export default function EstimateDetail() {
         customer_address: est.customer_address,
         job_type: est.job_type,
         job_description: est.job_description,
+        line_items: est.line_items,
         total: est.total,
         status: "unscheduled",
       });

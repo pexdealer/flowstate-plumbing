@@ -108,6 +108,7 @@ Deno.serve(async (req) => {
     customer_address: est.customer_address,
     job_type: est.job_type,
     job_description: est.job_description,
+    line_items: est.line_items, // carries inventory-linked lines for stock deduction
     total: est.total,
     status: "unscheduled",
     created_by: est.created_by, // keep the job owned by the plumber

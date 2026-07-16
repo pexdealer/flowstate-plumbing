@@ -1,15 +1,18 @@
 import React, { useState, useRef } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { 
-  LayoutDashboard, 
-  FileText, 
-  Users, 
-  Menu, 
-  X, 
+import {
+  LayoutDashboard,
+  FileText,
+  Users,
+  Menu,
+  X,
   Wrench,
   LogOut,
   ChevronRight,
-  Receipt
+  ClipboardList,
+  Package,
+  ShoppingCart,
+  Receipt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { base44 } from "@/api/base44Client";
@@ -19,8 +22,11 @@ import TourOverlay from "@/components/onboarding/TourOverlay";
 const navItems = [
   { label: "Dashboard", path: "/", icon: LayoutDashboard },
   { label: "Estimates", path: "/estimates", icon: FileText },
+  { label: "Jobs", path: "/jobs", icon: ClipboardList },
   { label: "Invoices", path: "/invoices", icon: Receipt },
   { label: "Customers", path: "/customers", icon: Users },
+  { label: "Inventory", path: "/inventory", icon: Package },
+  { label: "Purchasing", path: "/purchase-orders", icon: ShoppingCart },
 ];
 
 export default function AppLayout() {
@@ -58,7 +64,6 @@ export default function AppLayout() {
             </div>
           </Link>
         </div>
-
         <nav className="flex-1 px-3 space-y-1">
           {navItems.map((item) => (
             <Link
@@ -79,7 +84,6 @@ export default function AppLayout() {
             </Link>
           ))}
         </nav>
-
         <div className="p-4 border-t border-sidebar-border">
           <Button
             variant="ghost"

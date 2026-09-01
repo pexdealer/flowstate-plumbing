@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CheckCircle2, Loader2, ShieldCheck, FileText } from "lucide-react";
 import { BRAND_NAME, BRAND_TAGLINE, LOGO_URL } from "@/lib/branding";
+import PdfDownloadButton from "@/components/public/PdfDownloadButton";
 
 // Public, unauthenticated page a customer opens from the link the plumber sends.
 // All data access goes through Base44 backend functions (getProposal /
@@ -21,6 +22,7 @@ export default function PublicProposal() {
   const [name, setName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [notConfigured, setNotConfigured] = useState(false);
+  const docRef = useRef(null);
 
   useEffect(() => {
     let active = true;
@@ -53,6 +55,7 @@ export default function PublicProposal() {
   }, [token]);
 
   const est = state.estimate;
+  const filename = `Proposal-${est?.estimate_number || token}.pdf`;
   const accepted = est?.status === "approved" || est?.accepted_at;
   const declined = est?.status === "declined" || est?.declined_at;
 
@@ -126,6 +129,10 @@ export default function PublicProposal() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <div className="max-w-3xl mx-auto px-5 pt-5 flex justify-end">
+        <PdfDownloadButton targetRef={docRef} filename={filename} />
+      </div>
+      <div ref={docRef}>
       {/* Header */}
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-3xl mx-auto px-5 py-5 flex items-center gap-3">
@@ -248,6 +255,7 @@ export default function PublicProposal() {
         )}
 
         <p className="text-center text-xs text-slate-400 pb-6">{BRAND_TAGLINE}</p>
+      </div>
       </div>
     </div>
   );

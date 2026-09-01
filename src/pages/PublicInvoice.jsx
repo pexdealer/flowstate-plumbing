@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { CheckCircle2, Clock, ShieldCheck, FileText, Camera } from "lucide-react";
 import { format } from "date-fns";
 import { BRAND_NAME, BRAND_TAGLINE, LOGO_URL } from "@/lib/branding";
+import PdfDownloadButton from "@/components/public/PdfDownloadButton";
 
 const typeLabels = {
   labor: "Labor",
@@ -17,6 +18,7 @@ const categoryOrder = ["labor", "material", "equipment", "other"];
 export default function PublicInvoice() {
   const { token } = useParams();
   const [state, setState] = useState({ status: "loading", invoice: null });
+  const docRef = useRef(null);
 
   useEffect(() => {
     let active = true;
@@ -62,6 +64,7 @@ export default function PublicInvoice() {
   }
 
   const { invoice } = state;
+  const filename = `Invoice-${invoice.invoice_number || token}.pdf`;
   const isPaid = invoice.status === "paid";
 
   // Group line items by category
@@ -79,8 +82,11 @@ export default function PublicInvoice() {
   return (
     <div className="min-h-screen bg-slate-100">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+        <div className="flex justify-end mb-4">
+          <PdfDownloadButton targetRef={docRef} filename={filename} />
+        </div>
         {/* Invoice document */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div ref={docRef} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
           {/* Header */}
           <div className="px-6 sm:px-10 pt-8 sm:pt-10 pb-6 border-b border-slate-100">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">

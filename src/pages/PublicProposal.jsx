@@ -28,11 +28,12 @@ export default function PublicProposal() {
       try {
         const res = await base44.functions.invoke("getProposal", { token });
         if (!active) return;
-        if (!res || !res.estimate) {
+        const data = res?.data || res;
+        if (!data || !data.estimate) {
           setState({ status: "notfound" });
           return;
         }
-        setState({ status: "ready", estimate: res.estimate, business: res.business || null });
+        setState({ status: "ready", estimate: data.estimate, business: data.business || null });
       } catch (err) {
         if (!active) return;
         // 404 from the backend = no estimate for this token. Anything else

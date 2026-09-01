@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import TourBalloon from "@/components/onboarding/TourBalloon";
 
-const STORAGE_KEY = "pipeflow_tour_completed";
+const STORAGE_KEY = "pipeflow_tour_completed_v2";
 
 const STEPS = [
   {

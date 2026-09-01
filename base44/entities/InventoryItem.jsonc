@@ -57,7 +57,7 @@
     "quantity_on_hand": {
       "type": "number",
       "default": 0,
-      "description": "Cached total stock. Display cache only — the StockMovement ledger is the source of truth"
+      "description": "Cached total stock. Display cache only \u2014 the StockMovement ledger is the source of truth"
     },
     "reorder_point": {
       "type": "number",
@@ -99,5 +99,44 @@
   "required": [
     "sku",
     "name"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "read": null,
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
 }

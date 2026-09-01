@@ -9,8 +9,13 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import {
   ArrowLeft, Send, Copy, Check, ExternalLink, CheckCircle,
-  Mail, MessageSquare, Link2, Loader2, MapPin, Phone, Wrench,
+  Mail, MessageSquare, Link2, Loader2, MapPin, Phone, Wrench, Trash2,
 } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
@@ -123,6 +128,22 @@ export default function InvoiceDetail() {
     onError: (e) => toast.error(e?.message || "Could not update"),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      if (invoice.job_id) {
+        await base44.entities.Job.update(invoice.job_id, { invoice_id: "", invoice_status: "none" }).catch(() => {});
+      }
+      await base44.entities.Invoice.delete(invoice.id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["jobs"] });
+      toast.success("Invoice deleted");
+      navigate("/invoices");
+    },
+    onError: (e) => toast.error(e?.message || "Could not delete invoice"),
+  });
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-32">
@@ -182,6 +203,36 @@ export default function InvoiceDetail() {
               Mark Paid
             </Button>
           )}
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-xl text-muted-foreground hover:text-destructive"
+                aria-label="Delete invoice"
+                disabled={deleteMutation.isPending}
+              >
+                {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete this invoice?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This permanently removes {invoice.invoice_number || "this invoice"}. The linked job will be unlinked so it can be re-invoiced.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  onClick={() => deleteMutation.mutate()}
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </motion.div>
 

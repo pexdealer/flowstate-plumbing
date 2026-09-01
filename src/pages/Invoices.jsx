@@ -1,13 +1,19 @@
 import React, { useState } from "react";
 import { base44 } from "@/api/base44Client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, ArrowRight, Receipt, FileText } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Search, ArrowRight, Receipt, Trash2, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { motion } from "framer-motion";
 
 const statusStyles = {
@@ -20,10 +26,26 @@ const statusStyles = {
 export default function Invoices() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const queryClient = useQueryClient();
 
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ["invoices"],
     queryFn: () => base44.entities.Invoice.list("-created_date", 200),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (inv) => {
+      if (inv.job_id) {
+        await base44.entities.Job.update(inv.job_id, { invoice_id: "", invoice_status: "none" }).catch(() => {});
+      }
+      await base44.entities.Invoice.delete(inv.id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["jobs"] });
+      toast.success("Invoice deleted");
+    },
+    onError: (e) => toast.error(e?.message || "Could not delete invoice"),
   });
 
   const filtered = invoices.filter((inv) => {
@@ -106,33 +128,63 @@ export default function Invoices() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.03 }}
             >
-              <Link
-                to={`/invoices/${inv.id}`}
-                className="block bg-card rounded-2xl border border-border p-5 hover:shadow-lg hover:shadow-primary/5 transition-all group"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-1">
-                      <h3 className="font-heading font-semibold text-card-foreground">
-                        {inv.invoice_number || "Invoice"}
-                      </h3>
-                      <Badge variant="outline" className={`text-xs capitalize ${statusStyles[inv.status] || statusStyles.draft}`}>
-                        {inv.status || "draft"}
-                      </Badge>
+              <div className="flex items-center gap-2 bg-card rounded-2xl border border-border p-5 hover:shadow-lg hover:shadow-primary/5 transition-all group">
+                <Link to={`/invoices/${inv.id}`} className="flex-1 min-w-0">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-1">
+                        <h3 className="font-heading font-semibold text-card-foreground">
+                          {inv.invoice_number || "Invoice"}
+                        </h3>
+                        <Badge variant="outline" className={`text-xs capitalize ${statusStyles[inv.status] || statusStyles.draft}`}>
+                          {inv.status || "draft"}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {inv.customer_name || "Unnamed"}
+                        {inv.due_date && ` · Due ${format(new Date(inv.due_date), "MMM d, yyyy")}`}
+                      </p>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {inv.customer_name || "Unnamed"}
-                      {inv.due_date && ` · Due ${format(new Date(inv.due_date), "MMM d, yyyy")}`}
-                    </p>
+                    <div className="flex items-center gap-4">
+                      <span className="text-xl font-display font-bold text-card-foreground">
+                        ${(inv.total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                      </span>
+                      <ArrowRight className="w-5 h-5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <span className="text-xl font-display font-bold text-card-foreground">
-                      ${(inv.total || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                    </span>
-                    <ArrowRight className="w-5 h-5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                </div>
-              </Link>
+                </Link>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 shrink-0 text-muted-foreground hover:text-destructive"
+                      aria-label={`Delete invoice ${inv.invoice_number || ""}`}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete invoice?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This permanently removes {inv.invoice_number || "this invoice"}. The linked job will be unlinked so it can be re-invoiced.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        disabled={deleteMutation.isPending}
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteMutation.mutate(inv); }}
+                      >
+                        {deleteMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : "Delete"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </motion.div>
           ))}
         </div>

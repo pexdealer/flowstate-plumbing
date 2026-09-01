@@ -160,12 +160,11 @@ export default function Invoices() {
                       size="icon"
                       className="h-9 w-9 shrink-0 text-muted-foreground hover:text-destructive"
                       aria-label={`Delete invoice ${inv.invoice_number || ""}`}
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </AlertDialogTrigger>
-                  <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                  <AlertDialogContent>
                     <AlertDialogHeader>
                       <AlertDialogTitle>Delete invoice?</AlertDialogTitle>
                       <AlertDialogDescription>

@@ -40,7 +40,7 @@ Thank you for your business!`;
       to: invoice.customer_email,
       subject: `Invoice #${invoice.invoice_number}`,
       body: emailBody,
-      from_name: 'Your Branding Here',
+      from_name: 'Hot Water Daddys',
     });
 
     // Mark as sent

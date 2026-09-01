@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useNavigate, Link, useOutletContext } from "react-router-dom";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Plus, Minus, Trash2, PackageCheck, CalendarPlus, CalendarClock, Download, AlertTriangle, Clock, MapPin, Wrench, Send, FileText, CheckCircle, Loader2, Camera, Receipt, ExternalLink } from "lucide-react";
@@ -141,10 +142,18 @@ export default function JobDetail() {
   // Invoice generation
   const invoiceMutation = useMutation({
     mutationFn: async () => {
+      // Guard: the completion automation may have already created an invoice.
+      if (job.invoice_id) return null;
       let estimate = null;
       if (job.estimate_id) {
         const estData = await base44.entities.Estimate.filter({ id: job.estimate_id });
         estimate = estData?.[0];
+      }
+      // Fetch the real customer email so this invoice can actually be sent.
+      let customerEmail = "";
+      if (job.customer_id) {
+        const custData = await base44.entities.Customer.filter({ id: job.customer_id });
+        customerEmail = custData?.[0]?.email || "";
       }
       const token = generateProposalToken();
       const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
@@ -155,13 +164,17 @@ export default function JobDetail() {
         customer_name: job.customer_name || "",
         customer_address: job.customer_address || "",
         customer_phone: job.customer_phone || "",
-        customer_email: "",
+        customer_email: customerEmail,
         job_type: job.job_type || "",
         job_description: job.job_description || "",
         photos_before: job.photos_before || [],
         photos_after: job.photos_after || [],
         line_items: estimate?.line_items || [],
         subtotal: estimate?.subtotal || job.total || 0,
+        markup_percent: estimate?.markup_percent || 0,
+        markup_amount: estimate?.markup_amount || 0,
+        tax_percent: estimate?.tax_percent || 0,
+        tax_amount: estimate?.tax_amount || 0,
         total: job.total || estimate?.total || 0,
         status: "draft",
         public_token: token,
@@ -303,7 +316,7 @@ export default function JobDetail() {
             Invoice
           </h3>
           <div className="flex flex-wrap items-center gap-2">
-            {(!job.invoice_id || !invoice) && job.status === "completed" && (
+            {!job.invoice_id && job.status === "completed" && (
               <Button
                 size="sm"
                 className="gap-2 rounded-lg"
@@ -318,7 +331,7 @@ export default function JobDetail() {
               <Button
                 size="sm"
                 className="gap-2 rounded-lg"
-                onClick={() => { /* send logic */ }}
+                onClick={() => navigate(`/invoices/${invoice.id}`)}
               >
                 <Send className="w-3.5 h-3.5" /> Send
               </Button>

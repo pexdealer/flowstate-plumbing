@@ -4,7 +4,8 @@ import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Wrench, CheckCircle2, Loader2, ShieldCheck, FileText } from "lucide-react";
+import { CheckCircle2, Loader2, ShieldCheck, FileText } from "lucide-react";
+import { BRAND_NAME, BRAND_TAGLINE, LOGO_URL } from "@/lib/branding";
 
 // Public, unauthenticated page a customer opens from the link the plumber sends.
 // All data access goes through Base44 backend functions (getProposal /
@@ -127,11 +128,9 @@ export default function PublicProposal() {
       {/* Header */}
       <div className="bg-white border-b border-slate-200">
         <div className="max-w-3xl mx-auto px-5 py-5 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center">
-            <Wrench className="w-5 h-5 text-white" />
-          </div>
+          <img src={LOGO_URL} alt={BRAND_NAME} className="h-12 w-12 rounded-xl object-cover" />
           <div>
-            <h1 className="font-bold text-slate-900 leading-none">{businessName}</h1>
+            <h1 className="font-bold text-slate-900 leading-none">{BRAND_NAME}</h1>
             <p className="text-xs text-slate-400 mt-1">
               Proposal {est.estimate_number ? `#${est.estimate_number}` : ""}
             </p>
@@ -247,7 +246,7 @@ export default function PublicProposal() {
           </div>
         )}
 
-        <p className="text-center text-xs text-slate-400 pb-6">Powered by FlowState Plumbing</p>
+        <p className="text-center text-xs text-slate-400 pb-6">{BRAND_TAGLINE}</p>
       </div>
     </div>
   );

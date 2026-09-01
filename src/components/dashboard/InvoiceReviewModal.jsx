@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Send, Mail, MapPin, Wrench } from "lucide-react";
+import { Loader2, Send, Mail, MapPin, Wrench, AlertTriangle } from "lucide-react";
 
 const typeLabels = {
   labor: "Labor",
@@ -19,6 +19,7 @@ const typeLabels = {
 export default function InvoiceReviewModal({ invoice, onClose, onApproved }) {
   const [notes, setNotes] = useState(invoice.notes || "(Customize notes later)");
   const [sending, setSending] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     setNotes(invoice.notes || "(Customize notes later)");
@@ -31,6 +32,7 @@ export default function InvoiceReviewModal({ invoice, onClose, onApproved }) {
 
   const handleApprove = async () => {
     setSending(true);
+    setError(null);
     try {
       // Save notes
       await base44.entities.Invoice.update(invoice.id, { notes });
@@ -54,7 +56,7 @@ export default function InvoiceReviewModal({ invoice, onClose, onApproved }) {
       onApproved();
     } catch (e) {
       console.error(e);
-      onApproved();
+      setError(e?.message || "Could not send the invoice. It remains a draft — please try again.");
     } finally {
       setSending(false);
     }
@@ -146,6 +148,12 @@ export default function InvoiceReviewModal({ invoice, onClose, onApproved }) {
           />
         </div>
 
+        {error && (
+          <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+            <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
         <DialogFooter className="gap-2 sm:gap-2">
           <Button variant="outline" onClick={onClose} disabled={sending}>
             Cancel

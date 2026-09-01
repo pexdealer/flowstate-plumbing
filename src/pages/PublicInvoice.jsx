@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { CheckCircle2, Clock, ShieldCheck, FileText, Camera } from "lucide-react";
 import { format } from "date-fns";
+import { BRAND_NAME, BRAND_TAGLINE, LOGO_URL } from "@/lib/branding";
 
 const typeLabels = {
   labor: "Labor",
@@ -83,11 +84,14 @@ export default function PublicInvoice() {
           {/* Header */}
           <div className="px-6 sm:px-10 pt-8 sm:pt-10 pb-6 border-b border-slate-100">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-                  Your Branding Here
-                </h1>
-                <p className="text-sm text-slate-400 mt-1">Professional Plumbing Services</p>
+              <div className="flex items-center gap-3">
+                <img src={LOGO_URL} alt={BRAND_NAME} className="h-14 sm:h-16 w-auto rounded-xl" />
+                <div>
+                  <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+                    {BRAND_NAME}
+                  </h1>
+                  <p className="text-sm text-slate-400 mt-1">{BRAND_TAGLINE}</p>
+                </div>
               </div>
               <div className="text-left sm:text-right">
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Invoice</p>

@@ -6,7 +6,6 @@ import {
   Users,
   Menu,
   X,
-  Wrench,
   LogOut,
   ChevronRight,
   ClipboardList,
@@ -18,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { base44 } from "@/api/base44Client";
 import { motion, AnimatePresence } from "framer-motion";
 import TourOverlay from "@/components/onboarding/TourOverlay";
+import { BRAND_NAME, BRAND_TAGLINE, LOGO_URL } from "@/lib/branding";
 
 const navItems = [
   { label: "Dashboard", path: "/", icon: LayoutDashboard },
@@ -55,12 +55,10 @@ export default function AppLayout() {
       <aside className="hidden lg:flex flex-col w-64 bg-sidebar border-r border-sidebar-border fixed inset-y-0 z-30">
         <div className="p-6">
           <Link to="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-sidebar-primary flex items-center justify-center">
-              <Wrench className="w-5 h-5 text-sidebar-primary-foreground" />
-            </div>
-            <div>
-              <h1 className="font-display text-lg font-bold text-sidebar-foreground leading-none">PipeFlow</h1>
-              <p className="text-xs text-sidebar-foreground/50 mt-0.5">Estimator Pro</p>
+            <img src={LOGO_URL} alt={BRAND_NAME} className="h-11 w-11 rounded-xl object-cover" />
+            <div className="min-w-0">
+              <h1 className="font-display text-lg font-bold text-sidebar-foreground leading-none">{BRAND_NAME}</h1>
+              <p className="text-xs text-sidebar-foreground/50 mt-0.5 truncate">{BRAND_TAGLINE}</p>
             </div>
           </Link>
         </div>
@@ -101,11 +99,9 @@ export default function AppLayout() {
         <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)}>
           <Menu className="w-5 h-5" />
         </Button>
-        <div className="flex items-center gap-2 mx-auto">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <Wrench className="w-4 h-4 text-primary-foreground" />
-          </div>
-          <span className="font-display font-bold text-foreground">PipeFlow</span>
+        <div className="flex items-center gap-2 mx-auto min-w-0">
+          <img src={LOGO_URL} alt={BRAND_NAME} className="h-8 w-8 rounded-lg object-cover flex-shrink-0" />
+          <span className="font-display font-bold text-foreground text-sm truncate">{BRAND_NAME}</span>
         </div>
         <div className="w-10" />
       </div>
@@ -130,10 +126,8 @@ export default function AppLayout() {
             >
               <div className="flex items-center justify-between p-6">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-sidebar-primary flex items-center justify-center">
-                    <Wrench className="w-5 h-5 text-sidebar-primary-foreground" />
-                  </div>
-                  <h1 className="font-display text-lg font-bold text-sidebar-foreground">PipeFlow</h1>
+                  <img src={LOGO_URL} alt={BRAND_NAME} className="h-10 w-10 rounded-xl object-cover" />
+                  <h1 className="font-display text-lg font-bold text-sidebar-foreground">{BRAND_NAME}</h1>
                 </div>
                 <Button variant="ghost" size="icon" onClick={() => setMobileOpen(false)} className="text-sidebar-foreground">
                   <X className="w-5 h-5" />

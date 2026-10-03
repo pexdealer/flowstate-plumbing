@@ -63,7 +63,7 @@ export default async function(req) {
               `${est.customer_name} just accepted their estimate.\n\n` +
               `Job: ${est.job_type}\nAddress: ${est.customer_address || '—'}\n` +
               `Total: $${(est.total || 0).toFixed(2)}\n\n` +
-              `Open it in Hot Water Daddys to schedule and dispatch.`,
+              `Open it in Genesis Handyman Solutions to schedule and dispatch.`,
           });
         }
       } catch (_) { /* don't fail acceptance if email hiccups */ }

@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { base44 } from "@/api/base44Client";
 import { motion, AnimatePresence } from "framer-motion";
 import TourOverlay from "@/components/onboarding/TourOverlay";
-import { BRAND_NAME, BRAND_TAGLINE, LOGO_URL } from "@/lib/branding";
+import { BRAND_NAME, LOGO_URL } from "@/lib/branding";
 
 const navItems = [
   { label: "Dashboard", path: "/", icon: LayoutDashboard },
@@ -58,7 +58,6 @@ export default function AppLayout() {
             <img src={LOGO_URL} alt={BRAND_NAME} className="h-11 w-11 rounded-xl object-cover" />
             <div className="min-w-0">
               <h1 className="font-display text-lg font-bold text-sidebar-foreground leading-none">{BRAND_NAME}</h1>
-              <p className="text-xs text-sidebar-foreground/50 mt-0.5 truncate">{BRAND_TAGLINE}</p>
             </div>
           </Link>
         </div>

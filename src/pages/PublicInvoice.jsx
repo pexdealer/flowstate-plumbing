@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { CheckCircle2, Clock, ShieldCheck, FileText, Camera } from "lucide-react";
 import { format } from "date-fns";
-import { BRAND_NAME, BRAND_TAGLINE, LOGO_URL } from "@/lib/branding";
+import { BRAND_NAME, LOGO_URL } from "@/lib/branding";
 import PdfDownloadButton from "@/components/public/PdfDownloadButton";
 
 const typeLabels = {
@@ -96,7 +96,6 @@ export default function PublicInvoice() {
                   <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
                     {BRAND_NAME}
                   </h1>
-                  <p className="text-sm text-slate-400 mt-1">{BRAND_TAGLINE}</p>
                 </div>
               </div>
               <div className="text-left sm:text-right">

@@ -40,7 +40,7 @@ Thank you for your business!`;
       to: invoice.customer_email,
       subject: `Invoice #${invoice.invoice_number}`,
       body: emailBody,
-      from_name: 'Hot Water Daddys',
+      from_name: 'Genesis Handyman Solutions',
     });
 
     // Mark as sent

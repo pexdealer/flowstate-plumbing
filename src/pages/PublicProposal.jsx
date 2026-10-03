@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CheckCircle2, Loader2, ShieldCheck, FileText } from "lucide-react";
-import { BRAND_NAME, BRAND_TAGLINE, LOGO_URL } from "@/lib/branding";
+import { BRAND_NAME, LOGO_URL } from "@/lib/branding";
 import PdfDownloadButton from "@/components/public/PdfDownloadButton";
 
 // Public, unauthenticated page a customer opens from the link the plumber sends.
@@ -254,7 +254,6 @@ export default function PublicProposal() {
           </div>
         )}
 
-        <p className="text-center text-xs text-slate-400 pb-6">{BRAND_TAGLINE}</p>
       </div>
       </div>
     </div>

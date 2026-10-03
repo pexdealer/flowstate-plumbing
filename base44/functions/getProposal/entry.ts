@@ -35,7 +35,7 @@ export default async function(req) {
       declined_at: est.declined_at,
     };
 
-    return Response.json({ estimate: safe, business: { name: 'Hot Water Daddys' } });
+    return Response.json({ estimate: safe, business: { name: 'Genesis Handyman Solutions' } });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

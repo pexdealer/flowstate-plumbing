@@ -32,7 +32,7 @@ export default function PublicProposal() {
         if (!active) return;
         const data = res?.data || res;
         if (!data || !data.estimate) {
-          setState({ status: "notfound" });
+          setState({ status: "notfound", estimate: null, business: null });
           return;
         }
         setState({ status: "ready", estimate: data.estimate, business: data.business || null });
@@ -42,10 +42,10 @@ export default function PublicProposal() {
         // (e.g. the function isn't deployed yet) gets a distinct message so the
         // owner can tell "bad link" apart from "not set up".
         if (err?.status === 404) {
-          setState({ status: "notfound" });
+          setState({ status: "notfound", estimate: null, business: null });
         } else {
           setNotConfigured(true);
-          setState({ status: "error" });
+          setState({ status: "error", estimate: null, business: null });
         }
       }
     })();
@@ -215,6 +215,13 @@ export default function PublicProposal() {
             </div>
           </div>
         </div>
+
+        {est.customer_notes && (
+          <div className="bg-white rounded-2xl border border-slate-200 p-6">
+            <h3 className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2">Notes</h3>
+            <p className="text-sm text-slate-600 whitespace-pre-wrap">{est.customer_notes}</p>
+          </div>
+        )}
 
         {/* Accept / decline */}
         {!accepted && !declined && (

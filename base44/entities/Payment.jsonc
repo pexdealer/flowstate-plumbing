@@ -1,0 +1,49 @@
+{
+  "name": "Payment",
+  "type": "object",
+  "properties": {
+    "invoice_id": { "type": "string" },
+    "job_id": { "type": "string" },
+    "amount_cents": { "type": "number", "description": "Payment amount stored as integer cents" },
+    "currency": { "type": "string", "default": "usd" },
+    "method": {
+      "type": "string",
+      "enum": ["stripe_card", "stripe_ach", "cash", "check", "venmo", "cash_app", "other"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "succeeded", "failed", "refunded", "partially_refunded"],
+      "default": "pending"
+    },
+    "provider": { "type": "string", "enum": ["stripe", "external"] },
+    "provider_payment_id": { "type": "string" },
+    "external_reference": { "type": "string" },
+    "receipt_url": { "type": "string" },
+    "received_at": { "type": "string", "format": "date-time" },
+    "recorded_by": { "type": "string" },
+    "notes": { "type": "string" },
+    "idempotency_key": { "type": "string" }
+  },
+  "required": ["invoice_id", "amount_cents", "method", "status", "provider"],
+  "rls": {
+    "create": {
+      "$or": [
+        { "created_by_id": "{{user.id}}" },
+        { "user_condition": { "role": "admin" } }
+      ]
+    },
+    "read": {
+      "$or": [
+        { "created_by_id": "{{user.id}}" },
+        { "user_condition": { "role": "admin" } }
+      ]
+    },
+    "update": {
+      "$or": [
+        { "created_by_id": "{{user.id}}" },
+        { "user_condition": { "role": "admin" } }
+      ]
+    },
+    "delete": { "user_condition": { "role": "admin" } }
+  }
+}

@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  ArrowLeft, Send, Copy, Check, ExternalLink, CheckCircle,
+  ArrowLeft, Check, ExternalLink,
   Mail, MessageSquare, Link2, Loader2, MapPin, Phone, Wrench, Trash2,
 } from "lucide-react";
 import {
@@ -33,6 +34,10 @@ export default function InvoiceDetail() {
   const [copied, setCopied] = useState(false);
   const [emailInput, setEmailInput] = useState("");
   const [sending, setSending] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentReference, setPaymentReference] = useState("");
+  const [paymentRequestId, setPaymentRequestId] = useState(() => crypto.randomUUID());
 
   const { data, isLoading } = useQuery({
     queryKey: ["invoice", id],
@@ -40,11 +45,26 @@ export default function InvoiceDetail() {
   });
 
   const invoice = data?.[0];
+  const balanceDueCents = invoice
+    ? (Number.isInteger(invoice.balance_due_cents)
+      ? invoice.balance_due_cents
+      : Math.round((Number(invoice.total) || 0) * 100))
+    : 0;
 
   // Sync email input when invoice loads
   useEffect(() => {
     if (invoice?.customer_email) setEmailInput(invoice.customer_email);
   }, [invoice?.customer_email]);
+
+  useEffect(() => {
+    if (invoice && !paymentAmount) setPaymentAmount((balanceDueCents / 100).toFixed(2));
+  }, [invoice?.id, balanceDueCents]);
+
+  const { data: payments = [] } = useQuery({
+    queryKey: ["payments", id],
+    queryFn: () => base44.entities.Payment.filter({ invoice_id: id }),
+    enabled: !!id,
+  });
 
   const { data: jobData } = useQuery({
     queryKey: ["job", invoice?.job_id],
@@ -113,19 +133,26 @@ export default function InvoiceDetail() {
     toast.success("Message ready — link copied to clipboard");
   };
 
-  const markPaidMutation = useMutation({
+  const recordPaymentMutation = useMutation({
     mutationFn: async () => {
-      await base44.entities.Invoice.update(invoice.id, { status: "paid", paid_at: new Date().toISOString() });
-      if (invoice.job_id) {
-        await base44.entities.Job.update(invoice.job_id, { invoice_status: "paid" });
-      }
+      const response = await base44.functions.invoke("recordExternalPayment", {
+        invoice_id: invoice.id,
+        method: paymentMethod,
+        amount_cents: Math.round(Number(paymentAmount) * 100),
+        external_reference: paymentReference,
+        idempotency_key: paymentRequestId,
+      });
+      return response?.data;
     },
     onSuccess: () => {
       invalidate();
+      queryClient.invalidateQueries({ queryKey: ["payments", id] });
       queryClient.invalidateQueries({ queryKey: ["job", invoice?.job_id] });
-      toast.success("Invoice marked as paid");
+      setPaymentReference("");
+      setPaymentRequestId(crypto.randomUUID());
+      toast.success("Payment recorded with an audit trail");
     },
-    onError: (e) => toast.error(e?.message || "Could not update"),
+    onError: (e) => toast.error(e?.message || "Could not record payment"),
   });
 
   const deleteMutation = useMutation({
@@ -191,17 +218,6 @@ export default function InvoiceDetail() {
                 <ExternalLink className="w-4 h-4" /> Preview
               </Button>
             </a>
-          )}
-          {invoice.status === "sent" && (
-            <Button
-              className="gap-2 rounded-xl text-emerald-600 border-emerald-200"
-              variant="outline"
-              onClick={() => markPaidMutation.mutate()}
-              disabled={markPaidMutation.isPending}
-            >
-              {markPaidMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-              Mark Paid
-            </Button>
           )}
           <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -291,6 +307,70 @@ export default function InvoiceDetail() {
         )}
       </motion.div>
 
+      {balanceDueCents > 0 && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-2xl border border-border p-6 space-y-4">
+          <div>
+            <h3 className="font-heading font-semibold text-card-foreground">Record Payment</h3>
+            <p className="text-sm text-muted-foreground mt-1">For cash, check, Venmo, Cash App, or another payment collected outside Stripe.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+              <SelectTrigger className="rounded-lg" aria-label="Payment method"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="cash">Cash</SelectItem>
+                <SelectItem value="check">Check</SelectItem>
+                <SelectItem value="venmo">Venmo</SelectItem>
+                <SelectItem value="cash_app">Cash App</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+            <Input
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={paymentAmount}
+              onChange={(event) => setPaymentAmount(event.target.value)}
+              placeholder="Amount"
+              aria-label="Payment amount"
+            />
+            <Input
+              value={paymentReference}
+              onChange={(event) => setPaymentReference(event.target.value)}
+              placeholder="Reference or check #"
+              aria-label="Payment reference"
+            />
+          </div>
+          <Button
+            onClick={() => recordPaymentMutation.mutate()}
+            disabled={recordPaymentMutation.isPending || !Number(paymentAmount)}
+            className="rounded-lg"
+          >
+            {recordPaymentMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+            Record Payment
+          </Button>
+        </motion.div>
+      )}
+
+      {payments.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-card rounded-2xl border border-border p-6">
+          <h3 className="font-heading font-semibold text-card-foreground mb-3">Payment History</h3>
+          <div className="divide-y divide-border">
+            {payments.map((payment) => (
+              <div key={payment.id} className="py-3 flex items-center justify-between gap-4 text-sm">
+                <div>
+                  <p className="font-medium capitalize">{payment.method?.replace(/_/g, " ")}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {payment.received_at ? format(new Date(payment.received_at), "MMM d, yyyy 'at' h:mm a") : "Recorded"}
+                    {payment.external_reference ? ` · ${payment.external_reference}` : ""}
+                  </p>
+                </div>
+                <p className="font-semibold text-emerald-700">${((payment.amount_cents || 0) / 100).toFixed(2)}</p>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
       {/* Invoice summary */}
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="bg-card rounded-2xl border border-border p-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -349,8 +429,11 @@ export default function InvoiceDetail() {
           <div>
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Amount Due</p>
             <p className="text-3xl font-display font-bold text-primary mt-1">
-              ${(invoice.total || 0).toFixed(2)}
+              ${(balanceDueCents / 100).toFixed(2)}
             </p>
+            {(invoice.amount_paid_cents || 0) > 0 && (
+              <p className="text-sm text-emerald-700 mt-1">${(invoice.amount_paid_cents / 100).toFixed(2)} received</p>
+            )}
           </div>
           {job && (
             <Link to={`/jobs/${job.id}`}>

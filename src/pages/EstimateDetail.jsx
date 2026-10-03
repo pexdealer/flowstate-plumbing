@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { generateProposalToken, proposalUrl } from "@/lib/proposal";
+import { proposalUrl } from "@/lib/proposal";
 import { calendarLinksForJob, downloadICS, eventFromJob } from "@/lib/calendar";
 
 const statusStyles = {
@@ -41,35 +41,25 @@ export default function EstimateDetail() {
     queryClient.invalidateQueries({ queryKey: ["estimates"] });
   };
 
-  const statusMutation = useMutation({
-    mutationFn: (status) => base44.entities.Estimate.update(id, { status }),
-    onSuccess: () => {
-      invalidate();
-      toast.success("Status updated");
-    },
-    onError: (e) => toast.error(e?.message || "Could not update status"),
-  });
-
-  // Generate a public link (if needed), mark the estimate sent, and copy the
-  // customer URL to the clipboard so the plumber can paste it into a text/email.
+  // Create an immutable customer version. Email delivery is recorded only
+  // after the provider accepts it; manual links remain prepared, not sent.
   const sendMutation = useMutation({
     mutationFn: async () => {
-      const token = est.public_token || generateProposalToken();
-      await base44.entities.Estimate.update(id, {
-        public_token: token,
-        status: est.status === "approved" || est.status === "declined" ? est.status : "sent",
-        sent_at: new Date().toISOString(),
+      const response = await base44.functions.invoke("sendProposal", {
+        estimate_id: id,
+        channel: est.customer_email ? "email" : "manual_link",
       });
-      return token;
+      return response?.data;
     },
-    onSuccess: async (token) => {
+    onSuccess: async (result) => {
       invalidate();
-      const url = proposalUrl(token);
+      const url = result?.url;
+      if (!url) return;
       try {
         await navigator.clipboard.writeText(url);
-        toast.success("Customer link copied to clipboard");
+        toast.success(result.delivered ? "Proposal emailed; link copied" : "Customer link prepared and copied");
       } catch {
-        toast.success("Customer link ready");
+        toast.success(result.delivered ? "Proposal emailed to customer" : "Customer link prepared");
       }
     },
     onError: (e) => toast.error(e?.message || "Could not create the link"),
@@ -160,21 +150,13 @@ export default function EstimateDetail() {
           <Button variant="outline" className="gap-2 rounded-xl" onClick={() => sendMutation.mutate()} disabled={sendMutation.isPending}>
             <Send className="w-4 h-4" /> {est.sent_at ? "Resend link" : "Send"}
           </Button>
-          {(est.status === "sent" || est.status === "draft") && (
-            <>
-              <Button variant="outline" className="gap-2 rounded-xl text-emerald-600 border-emerald-200 hover:bg-emerald-50" onClick={() => statusMutation.mutate("approved")}>
-                <CheckCircle className="w-4 h-4" /> Approve
+          {!accepted && (
+            <Link to={`/estimates/${id}/edit`}>
+              <Button className="gap-2 rounded-xl">
+                <Pencil className="w-4 h-4" /> Edit
               </Button>
-              <Button variant="outline" className="gap-2 rounded-xl text-red-500 border-red-200 hover:bg-red-50" onClick={() => statusMutation.mutate("declined")}>
-                <XCircle className="w-4 h-4" /> Decline
-              </Button>
-            </>
+            </Link>
           )}
-          <Link to={`/estimates/${id}/edit`}>
-            <Button className="gap-2 rounded-xl">
-              <Pencil className="w-4 h-4" /> Edit
-            </Button>
-          </Link>
         </div>
       </motion.div>
 
@@ -342,9 +324,15 @@ export default function EstimateDetail() {
       </motion.div>
 
       {/* Notes */}
+      {est.customer_notes && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-card rounded-2xl border border-border p-6">
+          <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Customer Notes</h3>
+          <p className="text-sm text-card-foreground whitespace-pre-wrap">{est.customer_notes}</p>
+        </motion.div>
+      )}
       {est.notes && (
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-card rounded-2xl border border-border p-6">
-          <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Notes</h3>
+          <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Internal Notes</h3>
           <p className="text-sm text-card-foreground whitespace-pre-wrap">{est.notes}</p>
         </motion.div>
       )}

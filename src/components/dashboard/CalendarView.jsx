@@ -4,7 +4,7 @@ import {
   eachDayOfInterval, isSameDay, isSameMonth, isToday,
   format, addMonths, subMonths
 } from "date-fns";
-import { ChevronLeft, ChevronRight, CalendarDays, Wrench, Clock } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, Clock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

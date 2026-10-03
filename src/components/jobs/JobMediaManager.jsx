@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Camera, Upload, Trash2, Loader2, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
+import { getSignedPhotoUrls } from "@/lib/photoUrls";
 
 export default function JobMediaManager({
   photosBefore = [],
@@ -12,6 +13,22 @@ export default function JobMediaManager({
   disabled = false,
 }) {
   const [uploading, setUploading] = useState(null);
+  // Stored values are private file URIs; display uses short-lived signed URLs.
+  const [displayMap, setDisplayMap] = useState({});
+
+  useEffect(() => {
+    let active = true;
+    const stored = [...photosBefore, ...photosAfter];
+    if (!stored.length) return undefined;
+    (async () => {
+      const signed = await getSignedPhotoUrls(stored);
+      if (!active) return;
+      const map = {};
+      stored.forEach((uri, i) => { map[uri] = signed[i]; });
+      setDisplayMap(map);
+    })();
+    return () => { active = false; };
+  }, [photosBefore, photosAfter]);
 
   const handleUpload = async (category) => {
     const input = document.createElement("input");
@@ -28,9 +45,9 @@ export default function JobMediaManager({
           const formData = new FormData();
           formData.append("file", file);
           const { base44 } = await import("@/api/base44Client");
-          const result = await base44.integrations.Core.UploadFile({ file });
-          if (result?.file_url) {
-            onAdd(category, result.file_url);
+          const result = await base44.integrations.Core.UploadPrivateFile({ file });
+          if (result?.file_uri) {
+            onAdd(category, result.file_uri);
           }
         }
         toast.success(`${files.length} photo${files.length > 1 ? "s" : ""} uploaded`);
@@ -71,7 +88,7 @@ export default function JobMediaManager({
             Add
           </Button>
         </div>
-        <PhotoGrid photos={photosBefore} onRemove={(url) => removePhoto("before", url)} disabled={disabled} />
+        <PhotoGrid photos={photosBefore} displayMap={displayMap} onRemove={(url) => removePhoto("before", url)} disabled={disabled} />
       </div>
 
       {/* After */}
@@ -96,13 +113,13 @@ export default function JobMediaManager({
             Add
           </Button>
         </div>
-        <PhotoGrid photos={photosAfter} onRemove={(url) => removePhoto("after", url)} disabled={disabled} />
+        <PhotoGrid photos={photosAfter} displayMap={displayMap} onRemove={(url) => removePhoto("after", url)} disabled={disabled} />
       </div>
     </div>
   );
 }
 
-function PhotoGrid({ photos = [], onRemove, disabled }) {
+function PhotoGrid({ photos = [], displayMap = {}, onRemove, disabled }) {
   if (!photos.length) {
     return (
       <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
@@ -125,7 +142,7 @@ function PhotoGrid({ photos = [], onRemove, disabled }) {
             className="group relative aspect-square rounded-xl overflow-hidden border border-border bg-muted"
           >
             <img
-              src={url}
+              src={displayMap[url] || url}
               alt={`Photo ${i + 1}`}
               className="w-full h-full object-cover"
             />

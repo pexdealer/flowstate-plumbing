@@ -24,15 +24,12 @@ export default function PublicInvoice() {
     let active = true;
     (async () => {
       try {
-        const invoices = await base44.entities.Invoice.filter({ public_token: token });
+        const response = await base44.functions.invoke("getInvoice", { token });
+        const invoice = response?.data?.invoice;
         if (!active) return;
-        if (!invoices || !invoices.length) {
+        if (!invoice) {
           setState({ status: "notfound" });
           return;
-        }
-        const invoice = invoices[0];
-        if (!invoice.viewed_at) {
-          base44.entities.Invoice.update(invoice.id, { viewed_at: new Date().toISOString() }).catch(() => {});
         }
         setState({ status: "ready", invoice });
       } catch {

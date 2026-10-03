@@ -24,17 +24,17 @@ export default function PublicInvoice() {
     let active = true;
     (async () => {
       try {
-        const response = await base44.functions.invoke("getInvoice", { token });
-        const invoice = response?.data?.invoice;
+        const response = await base44.functions.invoke("getPublicInvoice", { token });
         if (!active) return;
+        const invoice = response?.data?.invoice;
         if (!invoice) {
-          setState({ status: "notfound" });
+          setState({ status: "notfound", invoice: null });
           return;
         }
         setState({ status: "ready", invoice });
       } catch {
         if (!active) return;
-        setState({ status: "notfound" });
+        setState({ status: "notfound", invoice: null });
       }
     })();
     return () => { active = false; };
@@ -63,6 +63,9 @@ export default function PublicInvoice() {
   const { invoice } = state;
   const filename = `Invoice-${invoice.invoice_number || token}.pdf`;
   const isPaid = invoice.status === "paid";
+  const balanceDue = Number.isInteger(invoice.balance_due_cents)
+    ? invoice.balance_due_cents / 100
+    : invoice.total || 0;
 
   // Group line items by category
   const categories = {};
@@ -266,24 +269,22 @@ export default function PublicInvoice() {
                     <span className="text-slate-500">Subtotal</span>
                     <span className="text-slate-700">${(invoice.subtotal || 0).toFixed(2)}</span>
                   </div>
-                  {(invoice.markup_amount || 0) > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-500">
-                        Markup{invoice.markup_percent ? ` (${invoice.markup_percent}%)` : ""}
-                      </span>
-                      <span className="text-slate-700">${(invoice.markup_amount || 0).toFixed(2)}</span>
-                    </div>
-                  )}
                   {(invoice.tax_percent || 0) > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-slate-500">Tax ({invoice.tax_percent}%)</span>
                       <span className="text-slate-700">${(invoice.tax_amount || 0).toFixed(2)}</span>
                     </div>
                   )}
+                  {(invoice.amount_paid_cents || 0) > 0 && (
+                    <div className="flex justify-between text-sm text-emerald-700">
+                      <span>Payments received</span>
+                      <span>−${(invoice.amount_paid_cents / 100).toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className="border-t border-slate-200 pt-2 flex justify-between items-center">
                     <span className="font-bold text-slate-900">Total Due</span>
                     <span className="text-2xl font-bold text-slate-900">
-                      ${(invoice.total || 0).toFixed(2)}
+                      ${balanceDue.toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -292,10 +293,10 @@ export default function PublicInvoice() {
           )}
 
           {/* Notes */}
-          {invoice.notes && (
+          {invoice.customer_notes && (
             <div className="px-6 sm:px-10 py-6 border-t border-slate-100">
               <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Notes</h3>
-              <p className="text-sm text-slate-600 whitespace-pre-wrap">{invoice.notes}</p>
+              <p className="text-sm text-slate-600 whitespace-pre-wrap">{invoice.customer_notes}</p>
             </div>
           )}
 

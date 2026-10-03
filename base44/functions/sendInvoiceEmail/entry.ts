@@ -18,17 +18,30 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Please add the customer email before sending' }, { status: 400 });
     }
 
-    const url = invoice_url || `${req.headers.get('origin') || ''}/p/invoice/${invoice.public_token}`;
+    const requestOrigin = req.headers.get('origin') || '';
+    let url = `${requestOrigin}/p/invoice/${invoice.public_token}`;
+    if (invoice_url) {
+      try {
+        const candidate = new URL(invoice_url);
+        const expectedPath = `/p/invoice/${invoice.public_token}`;
+        if ((!requestOrigin || candidate.origin === requestOrigin) && candidate.pathname === expectedPath) {
+          url = candidate.toString();
+        }
+      } catch (_) { /* Ignore untrusted or malformed client URLs. */ }
+    }
     const dueStr = invoice.due_date
       ? new Date(invoice.due_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
       : '';
 
+    const balanceDueCents = Number.isInteger(invoice.balance_due_cents)
+      ? invoice.balance_due_cents
+      : Math.round((Number(invoice.total) || 0) * 100);
     const emailBody = `Hello ${invoice.customer_name || 'there'},
 
 Your invoice is ready.
 
 Invoice #: ${invoice.invoice_number}
-Amount Due: $${(invoice.total || 0).toFixed(2)}
+Amount Due: $${(balanceDueCents / 100).toFixed(2)}
 ${dueStr ? `Due Date: ${dueStr}\n` : ''}
 You can view your complete invoice — including scope of work, photos, and a full cost breakdown — online here:
 
@@ -55,7 +68,7 @@ Thank you for your business!`;
     }
 
     return Response.json({ success: true });
-  } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+  } catch (_) {
+    return Response.json({ error: 'Unable to send invoice' }, { status: 500 });
   }
 });

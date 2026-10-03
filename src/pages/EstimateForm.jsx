@@ -36,6 +36,8 @@ export default function EstimateForm() {
     customer_id: "",
     customer_name: "",
     customer_address: "",
+    customer_email: "",
+    customer_phone: "",
     job_type: "repair",
     job_description: "",
     line_items: [{ ...emptyItem }],
@@ -44,6 +46,7 @@ export default function EstimateForm() {
     status: "draft",
     valid_until: "",
     notes: "",
+    customer_notes: "",
   });
 
   const { data: customers = [] } = useQuery({
@@ -65,6 +68,8 @@ export default function EstimateForm() {
         customer_id: est.customer_id || "",
         customer_name: est.customer_name || "",
         customer_address: est.customer_address || "",
+        customer_email: est.customer_email || "",
+        customer_phone: est.customer_phone || "",
         job_type: est.job_type || "repair",
         job_description: est.job_description || "",
         line_items: est.line_items?.length ? est.line_items : [{ ...emptyItem }],
@@ -73,6 +78,7 @@ export default function EstimateForm() {
         status: est.status || "draft",
         valid_until: est.valid_until || "",
         notes: est.notes || "",
+        customer_notes: est.customer_notes || "",
       });
     }
   }, [existingEstimate]);
@@ -99,6 +105,8 @@ export default function EstimateForm() {
         customer_id: c.id,
         customer_name: c.name,
         customer_address: [c.address, c.city, c.state, c.zip].filter(Boolean).join(", "),
+        customer_email: c.email || "",
+        customer_phone: c.phone || "",
       });
     }
   };
@@ -118,26 +126,63 @@ export default function EstimateForm() {
   };
 
   const saveMutation = useMutation({
-    mutationFn: (data) => isEdit
-      ? base44.entities.Estimate.update(id, data)
-      : base44.entities.Estimate.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["estimates"] });
-      toast.success(isEdit ? "Estimate updated" : "Estimate created");
-      navigate("/estimates");
+    mutationFn: async (/** @type {{ data: any, prepareCustomerLink: boolean }} */ input) => {
+      const { data, prepareCustomerLink } = input;
+      if (isEdit && existingEstimate?.status === "approved") {
+        throw new Error("Approved estimates are locked. Create a revision instead.");
+      }
+      const saved = isEdit
+        ? await base44.entities.Estimate.update(id, data)
+        : await base44.entities.Estimate.create(data);
+      if (!prepareCustomerLink) return { saved };
+
+      const response = await base44.functions.invoke("sendProposal", {
+        estimate_id: saved.id,
+        channel: data.customer_email ? "email" : "manual_link",
+      });
+      return { saved, delivery: response?.data };
     },
+    onSuccess: ({ saved, delivery }) => {
+      queryClient.invalidateQueries({ queryKey: ["estimates"] });
+      if (delivery?.delivered) {
+        toast.success("Estimate saved and emailed to the customer");
+      } else if (delivery?.url) {
+        navigator.clipboard?.writeText(delivery.url).catch(() => {});
+        toast.success("Estimate saved; customer link prepared and copied");
+      } else {
+        toast.success(isEdit ? "Estimate updated" : "Estimate created");
+      }
+      navigate(`/estimates/${saved?.id || id}`);
+    },
+    onError: (error) => toast.error(error?.message || "Could not save estimate"),
   });
 
-  const handleSave = (status) => {
+  const handleSave = (prepareCustomerLink = false) => {
+    const cleanedItems = form.line_items.filter((item) => item.description.trim() && Number(item.quantity) > 0);
+    if (!form.customer_name.trim()) {
+      toast.error("Customer name is required");
+      return;
+    }
+    if (!form.job_description.trim()) {
+      toast.error("Scope of work is required");
+      return;
+    }
+    if (!cleanedItems.length) {
+      toast.error("Add at least one complete line item");
+      return;
+    }
     const payload = {
       ...form,
+      customer_name: form.customer_name.trim(),
+      job_description: form.job_description.trim(),
+      line_items: cleanedItems,
       subtotal,
       markup_amount: markupAmount,
       tax_amount: taxAmount,
       total: grandTotal,
-      status: status || form.status,
+      status: existingEstimate?.status === "sent" ? "sent" : "draft",
     };
-    saveMutation.mutate(payload);
+    saveMutation.mutate({ data: payload, prepareCustomerLink });
   };
 
   return (
@@ -171,8 +216,8 @@ export default function EstimateForm() {
           </div>
         </div>
         <div>
-          <Label>Job Description</Label>
-          <Textarea value={form.job_description} onChange={(e) => setForm({ ...form, job_description: e.target.value })} rows={3} className="rounded-lg" placeholder="Describe the scope of work..." />
+          <Label htmlFor="job-description">Scope of Work</Label>
+          <Textarea id="job-description" value={form.job_description} onChange={(e) => setForm({ ...form, job_description: e.target.value })} rows={3} className="rounded-lg" placeholder="Describe exactly what is included..." />
         </div>
       </motion.div>
 
@@ -195,8 +240,18 @@ export default function EstimateForm() {
           </div>
         </div>
         <div>
-          <Label>Job Site Address</Label>
-          <Input value={form.customer_address} onChange={(e) => setForm({ ...form, customer_address: e.target.value })} className="rounded-lg" placeholder="Address" />
+          <Label htmlFor="customer-address">Job Site Address</Label>
+          <Input id="customer-address" value={form.customer_address} onChange={(e) => setForm({ ...form, customer_address: e.target.value })} className="rounded-lg" placeholder="Address" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="customer-email">Customer Email</Label>
+            <Input id="customer-email" type="email" value={form.customer_email} onChange={(e) => setForm({ ...form, customer_email: e.target.value })} className="rounded-lg" placeholder="customer@email.com" />
+          </div>
+          <div>
+            <Label htmlFor="customer-phone">Customer Phone</Label>
+            <Input id="customer-phone" type="tel" value={form.customer_phone} onChange={(e) => setForm({ ...form, customer_phone: e.target.value })} className="rounded-lg" placeholder="(480) 555-0123" />
+          </div>
         </div>
       </motion.div>
 
@@ -279,8 +334,12 @@ export default function EstimateForm() {
           </div>
         </div>
         <div>
-          <Label>Notes</Label>
-          <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={3} className="rounded-lg" placeholder="Any additional notes..." />
+          <Label htmlFor="customer-notes">Customer Notes</Label>
+          <Textarea id="customer-notes" value={form.customer_notes} onChange={(e) => setForm({ ...form, customer_notes: e.target.value })} rows={3} className="rounded-lg" placeholder="Information you want the customer to see..." />
+        </div>
+        <div>
+          <Label htmlFor="internal-notes">Internal Notes</Label>
+          <Textarea id="internal-notes" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={3} className="rounded-lg" placeholder="Private notes — never shown to the customer" />
         </div>
       </motion.div>
 
@@ -289,11 +348,11 @@ export default function EstimateForm() {
         <Button variant="outline" onClick={() => navigate(-1)} className="rounded-xl">
           Cancel
         </Button>
-        <Button variant="secondary" onClick={() => handleSave("draft")} disabled={saveMutation.isPending} className="rounded-xl gap-2">
+        <Button variant="secondary" onClick={() => handleSave(false)} disabled={saveMutation.isPending} className="rounded-xl gap-2">
           <Save className="w-4 h-4" /> Save Draft
         </Button>
-        <Button onClick={() => handleSave("sent")} disabled={saveMutation.isPending} className="rounded-xl gap-2 shadow-lg shadow-primary/20">
-          Save & Send
+        <Button onClick={() => handleSave(true)} disabled={saveMutation.isPending} className="rounded-xl gap-2 shadow-lg shadow-primary/20">
+          {form.customer_email ? "Save & Email" : "Save & Prepare Link"}
         </Button>
       </motion.div>
     </div>

@@ -7,16 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, Minus, Trash2, PackageCheck, CalendarPlus, CalendarClock, Download, AlertTriangle, Clock, MapPin, Wrench, Send, FileText, CheckCircle, Loader2, Camera, Receipt, ExternalLink } from "lucide-react";
+import { ArrowLeft, Plus, Minus, Trash2, PackageCheck, CalendarClock, Send, FileText, Loader2, Receipt } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/AuthContext";
 import ItemPicker from "@/components/inventory/ItemPicker";
 import { recordUsageForJob } from "@/lib/inventory";
-import { calendarLinksForJob, downloadICS, eventFromJob } from "@/lib/calendar";
+import { calendarLinksForJob } from "@/lib/calendar";
 import { JOB_STATUS_STYLES } from "@/pages/Jobs";
 import JobMediaManager from "@/components/jobs/JobMediaManager";
-import { generateProposalToken } from "@/lib/proposal";
 
 const JOB_STATUSES = ["unscheduled", "scheduled", "dispatched", "in_progress", "completed", "canceled"];
 
@@ -142,46 +141,8 @@ export default function JobDetail() {
   // Invoice generation
   const invoiceMutation = useMutation({
     mutationFn: async () => {
-      // Guard: the completion automation may have already created an invoice.
-      if (job.invoice_id) return null;
-      let estimate = null;
-      if (job.estimate_id) {
-        const estData = await base44.entities.Estimate.filter({ id: job.estimate_id });
-        estimate = estData?.[0];
-      }
-      // Fetch the real customer email so this invoice can actually be sent.
-      let customerEmail = "";
-      if (job.customer_id) {
-        const custData = await base44.entities.Customer.filter({ id: job.customer_id });
-        customerEmail = custData?.[0]?.email || "";
-      }
-      const token = generateProposalToken();
-      const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
-      const inv = await base44.entities.Invoice.create({
-        invoice_number: invoiceNumber,
-        job_id: job.id,
-        estimate_id: job.estimate_id || "",
-        customer_name: job.customer_name || "",
-        customer_address: job.customer_address || "",
-        customer_phone: job.customer_phone || "",
-        customer_email: customerEmail,
-        job_type: job.job_type || "",
-        job_description: job.job_description || "",
-        photos_before: job.photos_before || [],
-        photos_after: job.photos_after || [],
-        line_items: estimate?.line_items || [],
-        subtotal: estimate?.subtotal || job.total || 0,
-        markup_percent: estimate?.markup_percent || 0,
-        markup_amount: estimate?.markup_amount || 0,
-        tax_percent: estimate?.tax_percent || 0,
-        tax_amount: estimate?.tax_amount || 0,
-        total: job.total || estimate?.total || 0,
-        status: "draft",
-        public_token: token,
-        due_date: new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0],
-      });
-      await base44.entities.Job.update(id, { invoice_id: inv.id, invoice_status: "draft" });
-      return inv;
+      const response = await base44.functions.invoke("createInvoice", { job_id: job.id });
+      return response?.data;
     },
     onSuccess: () => { invalidate(); toast.success("Invoice created"); },
     onError: (e) => toast.error(e?.message || "Could not create invoice"),

@@ -21,17 +21,26 @@ Deno.serve(async (req) => {
       return Response.json({ skipped: true, reason: 'Invoice already exists' });
     }
 
-    // Fetch the original estimate for line items
+    // Ownership check: never trust the payload — load the real job through the
+    // user-scoped client so RLS only returns it if the caller owns it.
+    const jobData = await base44.entities.Job.filter({ id: job.id });
+    const realJob = jobData?.[0];
+    if (!realJob) {
+      return Response.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    const j = realJob;
+
+    // Fetch the original estimate for line items (user-scoped, RLS applies)
     let estimate = null;
-    if (job.estimate_id) {
-      const estData = await base44.asServiceRole.entities.Estimate.filter({ id: job.estimate_id });
+    if (j.estimate_id) {
+      const estData = await base44.entities.Estimate.filter({ id: j.estimate_id });
       estimate = estData?.[0];
     }
 
-    // Fetch customer email
+    // Fetch customer email (user-scoped, RLS applies)
     let customerEmail = "";
-    if (job.customer_id) {
-      const custData = await base44.asServiceRole.entities.Customer.filter({ id: job.customer_id });
+    if (j.customer_id) {
+      const custData = await base44.entities.Customer.filter({ id: j.customer_id });
       customerEmail = custData?.[0]?.email || "";
     }
 
@@ -39,45 +48,45 @@ Deno.serve(async (req) => {
     const token = crypto.randomUUID();
     const invoiceNumber = `INV-${Date.now().toString().slice(-6)}`;
 
-    const invoice = await base44.asServiceRole.entities.Invoice.create({
+    const invoice = await base44.entities.Invoice.create({
       invoice_number: invoiceNumber,
-      job_id: job.id,
-      estimate_id: job.estimate_id || "",
-      estimate_number: job.estimate_number || "",
-      customer_name: job.customer_name || "",
-      customer_address: job.customer_address || "",
-      customer_phone: job.customer_phone || "",
+      job_id: j.id,
+      estimate_id: j.estimate_id || "",
+      estimate_number: j.estimate_number || "",
+      customer_name: j.customer_name || "",
+      customer_address: j.customer_address || "",
+      customer_phone: j.customer_phone || "",
       customer_email: customerEmail,
-      job_type: job.job_type || "",
-      job_description: job.job_description || "",
-      photos_before: job.photos_before || [],
-      photos_after: job.photos_after || [],
+      job_type: j.job_type || "",
+      job_description: j.job_description || "",
+      photos_before: j.photos_before || [],
+      photos_after: j.photos_after || [],
       line_items: estimate?.line_items || [],
-      subtotal: estimate?.subtotal || job.total || 0,
+      subtotal: estimate?.subtotal || j.total || 0,
       markup_percent: estimate?.markup_percent || 0,
       markup_amount: estimate?.markup_amount || 0,
       tax_percent: estimate?.tax_percent || 0,
       tax_amount: estimate?.tax_amount || 0,
-      total: job.total || estimate?.total || 0,
+      total: j.total || estimate?.total || 0,
       status: "draft",
       public_token: token,
       due_date: new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0],
       notes: "(Customize notes later)",
     });
 
-    // Link invoice back to the job
-    await base44.asServiceRole.entities.Job.update(job.id, {
+    // Link invoice back to the job (user-scoped, RLS applies)
+    await base44.entities.Job.update(j.id, {
       invoice_id: invoice.id,
       invoice_status: "draft",
     });
 
     // Create a notification for the dashboard
-    await base44.asServiceRole.entities.Notification.create({
+    await base44.entities.Notification.create({
       type: "system",
       title: "Invoice Ready for Review",
-      message: `Invoice ${invoiceNumber} for ${job.customer_name || "customer"} is ready to review and send.`,
+      message: `Invoice ${invoiceNumber} for ${j.customer_name || "customer"} is ready to review and send.`,
       link: `/invoices/${invoice.id}`,
-      job_id: job.id,
+      job_id: j.id,
       read: false,
     });
 

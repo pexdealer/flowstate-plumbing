@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cents, money } from '../base44/functions/_shared/invoices.js';
+import { cents, money } from '../base44/shared/invoices.ts';
 
 test('payment calculations convert dollars to integer cents', () => {
   assert.equal(cents(75), 7500);

@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
-import { buildPublicProposal } from '../_shared/publicDocuments.js';
+import { buildPublicProposal } from '../../shared/publicDocuments.ts';
 
 async function sha256(value) {
   const bytes = new TextEncoder().encode(value);
@@ -8,12 +8,12 @@ async function sha256(value) {
 }
 
 function publicUrl(token) {
-  const origin = Deno.env.get('PUBLIC_APP_ORIGIN') || 'https://plumbest.base44.app';
-  return `${origin}/p/${token}`;
+  return `https://plumbest.base44.app/p/${token}`;
 }
 
 export default async function(req) {
   try {
+    // Prepares an immutable proposal version and customer link (or email delivery).
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });

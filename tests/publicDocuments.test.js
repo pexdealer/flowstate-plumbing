@@ -4,7 +4,7 @@ import {
   buildPublicInvoice,
   buildPublicProposal,
   customerPricing,
-} from '../base44/functions/_shared/publicDocuments.js';
+} from '../base44/shared/publicDocuments.ts';
 
 const internalDocument = {
   estimate_number: 'EST-100',

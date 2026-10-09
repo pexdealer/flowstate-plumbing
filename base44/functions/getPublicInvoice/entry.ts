@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
-import { buildPublicInvoice } from '../_shared/publicDocuments.js';
+import { buildPublicInvoice } from '../../shared/publicDocuments.ts';
 
 const NO_STORE_HEADERS = { 'Cache-Control': 'private, no-store, max-age=0' };
 

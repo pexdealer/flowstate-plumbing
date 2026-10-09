@@ -1,5 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
-import { createInvoiceForJob } from '../_shared/invoices.js';
+import { createInvoiceForJob } from '../../shared/invoices.ts';
 
 Deno.serve(async (req) => {
   try {

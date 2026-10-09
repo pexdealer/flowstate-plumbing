@@ -51,6 +51,12 @@
               "other"
             ]
           },
+          "item_id": {
+            "type": "string"
+          },
+          "sku": {
+            "type": "string"
+          },
           "description": {
             "type": "string"
           },
@@ -59,6 +65,10 @@
           },
           "unit_price": {
             "type": "number"
+          },
+          "markup_percent": {
+            "type": "number",
+            "description": "Per-line markup percentage applied to material lines"
           },
           "total": {
             "type": "number"
@@ -81,6 +91,15 @@
     "tax_amount": {
       "type": "number"
     },
+    "cash_discount_percent": {
+      "type": "number",
+      "default": 0,
+      "description": "Cash discount percentage applied in place of sales tax; 0 means off"
+    },
+    "discount_amount": {
+      "type": "number",
+      "description": "Computed cash discount amount"
+    },
     "total": {
       "type": "number"
     },
@@ -97,7 +116,12 @@
     },
     "payment_status": {
       "type": "string",
-      "enum": ["unpaid", "partial", "paid", "refunded"],
+      "enum": [
+        "unpaid",
+        "partial",
+        "paid",
+        "refunded"
+      ],
       "default": "unpaid"
     },
     "payment_link": {

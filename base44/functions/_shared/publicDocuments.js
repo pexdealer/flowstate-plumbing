@@ -42,6 +42,8 @@ export function buildPublicProposal(estimate) {
     subtotal: customerSubtotal,
     tax_percent: roundCurrency(estimate.tax_percent),
     tax_amount: roundCurrency(estimate.tax_amount),
+    cash_discount_percent: roundCurrency(estimate.cash_discount_percent),
+    discount_amount: roundCurrency(estimate.discount_amount),
     total: roundCurrency(estimate.total),
     status: estimate.status,
     valid_until: estimate.valid_until,
@@ -65,6 +67,8 @@ export function buildPublicInvoice(invoice) {
     subtotal: customerSubtotal,
     tax_percent: roundCurrency(invoice.tax_percent),
     tax_amount: roundCurrency(invoice.tax_amount),
+    cash_discount_percent: roundCurrency(invoice.cash_discount_percent),
+    discount_amount: roundCurrency(invoice.discount_amount),
     total: roundCurrency(invoice.total),
     amount_paid_cents: Number(invoice.amount_paid_cents) || 0,
     balance_due_cents: Number.isInteger(invoice.balance_due_cents)

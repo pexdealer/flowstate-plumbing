@@ -76,6 +76,10 @@
           "unit_price": {
             "type": "number"
           },
+          "markup_percent": {
+            "type": "number",
+            "description": "Per-line markup percentage applied to material lines"
+          },
           "total": {
             "type": "number"
           }
@@ -97,6 +101,15 @@
     },
     "tax_amount": {
       "type": "number"
+    },
+    "cash_discount_percent": {
+      "type": "number",
+      "default": 0,
+      "description": "Cash discount percentage applied in place of sales tax; 0 means off"
+    },
+    "discount_amount": {
+      "type": "number",
+      "description": "Computed cash discount amount"
     },
     "total": {
       "type": "number",
@@ -144,11 +157,18 @@
     },
     "delivery_channel": {
       "type": "string",
-      "enum": ["email", "manual_link"]
+      "enum": [
+        "email",
+        "manual_link"
+      ]
     },
     "delivery_status": {
       "type": "string",
-      "enum": ["prepared", "delivered", "failed"]
+      "enum": [
+        "prepared",
+        "delivered",
+        "failed"
+      ]
     },
     "sent_at": {
       "type": "string",

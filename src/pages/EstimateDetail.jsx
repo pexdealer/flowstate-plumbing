@@ -13,6 +13,8 @@ import {
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { proposalUrl } from "@/lib/proposal";
+import PdfDownloadButton from "@/components/public/PdfDownloadButton";
+import ProposalDocument from "@/components/estimates/ProposalDocument";
 import { calendarLinksForJob, downloadICS, eventFromJob } from "@/lib/calendar";
 
 const statusStyles = {
@@ -30,6 +32,7 @@ export default function EstimateDetail() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [copied, setCopied] = useState(false);
+  const docRef = React.useRef(null);
 
   const { data: est, isLoading } = useQuery({
     queryKey: ["estimate", id],
@@ -147,6 +150,7 @@ export default function EstimateDetail() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <PdfDownloadButton targetRef={docRef} label="PDF" filename={`Proposal-${est.estimate_number || id}.pdf`} className="rounded-xl" />
           <Button variant="outline" className="gap-2 rounded-xl" onClick={() => sendMutation.mutate()} disabled={sendMutation.isPending}>
             <Send className="w-4 h-4" /> {est.sent_at ? "Resend link" : "Send"}
           </Button>
@@ -308,6 +312,12 @@ export default function EstimateDetail() {
                 <span>${(est.markup_amount || 0).toFixed(2)}</span>
               </div>
             )}
+            {(est.discount_amount || 0) > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Cash discount ({est.cash_discount_percent}%)</span>
+                <span>−${(est.discount_amount || 0).toFixed(2)}</span>
+              </div>
+            )}
             {(est.tax_percent || 0) > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Tax ({est.tax_percent}%)</span>
@@ -336,6 +346,9 @@ export default function EstimateDetail() {
           <p className="text-sm text-card-foreground whitespace-pre-wrap">{est.notes}</p>
         </motion.div>
       )}
+
+      {/* Off-screen customer-facing document used for the PDF download */}
+      <ProposalDocument estimate={est} ref={docRef} />
     </div>
   );
 }

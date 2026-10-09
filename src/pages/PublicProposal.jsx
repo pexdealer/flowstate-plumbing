@@ -207,6 +207,12 @@ export default function PublicProposal() {
           <div className="border-t border-slate-100 p-6">
             <div className="max-w-xs ml-auto space-y-2">
               <Row label="Subtotal" value={est.subtotal} />
+              {(est.discount_amount || 0) > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-500">Cash discount ({est.cash_discount_percent}%)</span>
+                  <span className="text-emerald-700">−${(est.discount_amount || 0).toFixed(2)}</span>
+                </div>
+              )}
               {(est.tax_percent || 0) > 0 && <Row label={`Tax (${est.tax_percent}%)`} value={est.tax_amount} />}
               <div className="border-t border-slate-100 pt-2 flex justify-between items-center">
                 <span className="font-semibold text-slate-900">Total</span>

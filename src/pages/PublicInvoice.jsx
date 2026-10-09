@@ -269,6 +269,12 @@ export default function PublicInvoice() {
                     <span className="text-slate-500">Subtotal</span>
                     <span className="text-slate-700">${(invoice.subtotal || 0).toFixed(2)}</span>
                   </div>
+                  {(invoice.discount_amount || 0) > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-500">Cash discount ({invoice.cash_discount_percent}%)</span>
+                      <span className="text-emerald-700">−${(invoice.discount_amount || 0).toFixed(2)}</span>
+                    </div>
+                  )}
                   {(invoice.tax_percent || 0) > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-slate-500">Tax ({invoice.tax_percent}%)</span>

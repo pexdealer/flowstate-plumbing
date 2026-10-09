@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, Save } from "lucide-react";
+import { ArrowLeft, Plus, Save, UserPlus } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import NewCustomerDialog from "@/components/estimates/NewCustomerDialog";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import LineItemRow from "@/components/estimates/LineItemRow";
@@ -41,8 +43,9 @@ export default function EstimateForm() {
     job_type: "repair",
     job_description: "",
     line_items: [{ ...emptyItem }],
-    markup_percent: 15,
+    markup_percent: 0,
     tax_percent: 0,
+    cash_discount_percent: 0,
     status: "draft",
     valid_until: "",
     notes: "",
@@ -75,6 +78,7 @@ export default function EstimateForm() {
         line_items: est.line_items?.length ? est.line_items : [{ ...emptyItem }],
         markup_percent: est.markup_percent ?? 15,
         tax_percent: est.tax_percent ?? 0,
+        cash_discount_percent: est.cash_discount_percent ?? 0,
         status: est.status || "draft",
         valid_until: est.valid_until || "",
         notes: est.notes || "",
@@ -94,8 +98,12 @@ export default function EstimateForm() {
   const subtotal = form.line_items.reduce((s, i) => s + (i.total || 0), 0);
   const markupAmount = subtotal * ((form.markup_percent || 0) / 100);
   const afterMarkup = subtotal + markupAmount;
-  const taxAmount = afterMarkup * ((form.tax_percent || 0) / 100);
-  const grandTotal = afterMarkup + taxAmount;
+  // Cash discount replaces sales tax: it's applied to the same taxable amount
+  // tax would be, and no tax is charged while it's on.
+  const cashDiscountOn = (form.cash_discount_percent || 0) > 0;
+  const discountAmount = cashDiscountOn ? afterMarkup * (form.cash_discount_percent / 100) : 0;
+  const taxAmount = cashDiscountOn ? 0 : afterMarkup * ((form.tax_percent || 0) / 100);
+  const grandTotal = afterMarkup - discountAmount + taxAmount;
 
   const handleCustomerSelect = (customerId) => {
     const c = customers.find((c) => c.id === customerId);
@@ -109,6 +117,17 @@ export default function EstimateForm() {
         customer_phone: c.phone || "",
       });
     }
+  };
+
+  const handleCustomerCreated = (c) => {
+    setForm({
+      ...form,
+      customer_id: c.id,
+      customer_name: c.name,
+      customer_address: [c.address, c.city, c.state, c.zip].filter(Boolean).join(", "),
+      customer_email: c.email || "",
+      customer_phone: c.phone || "",
+    });
   };
 
   const updateLineItem = (index, updated) => {
@@ -171,15 +190,18 @@ export default function EstimateForm() {
       toast.error("Add at least one complete line item");
       return;
     }
+    const round2 = (v) => Math.round((v + Number.EPSILON) * 100) / 100;
     const payload = {
       ...form,
       customer_name: form.customer_name.trim(),
       job_description: form.job_description.trim(),
       line_items: cleanedItems,
-      subtotal,
-      markup_amount: markupAmount,
-      tax_amount: taxAmount,
-      total: grandTotal,
+      subtotal: round2(subtotal),
+      markup_amount: round2(markupAmount),
+      tax_amount: round2(taxAmount),
+      cash_discount_percent: cashDiscountOn ? form.cash_discount_percent : 0,
+      discount_amount: round2(discountAmount),
+      total: round2(grandTotal),
       status: existingEstimate?.status === "sent" ? "sent" : "draft",
     };
     saveMutation.mutate({ data: payload, prepareCustomerLink });
@@ -227,12 +249,18 @@ export default function EstimateForm() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <Label>Select Customer</Label>
-            <Select value={form.customer_id} onValueChange={handleCustomerSelect}>
-              <SelectTrigger className="rounded-lg"><SelectValue placeholder="Choose a customer..." /></SelectTrigger>
-              <SelectContent>
-                {customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2">
+              <Select value={form.customer_id} onValueChange={handleCustomerSelect}>
+                <SelectTrigger className="rounded-lg flex-1"><SelectValue placeholder="Choose a customer..." /></SelectTrigger>
+                <SelectContent>
+                  {customers.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <NewCustomerDialog
+                triggerLabel={<><UserPlus className="w-4 h-4" /> New customer</>}
+                onCreated={handleCustomerCreated}
+              />
+            </div>
           </div>
           <div>
             <Label>Or Enter Name</Label>
@@ -267,9 +295,10 @@ export default function EstimateForm() {
         {/* Header row */}
         <div className="hidden sm:grid grid-cols-12 gap-2 text-xs font-medium text-muted-foreground px-1">
           <div className="col-span-2">Type</div>
-          <div className="col-span-4">Description</div>
-          <div className="col-span-2">Qty</div>
+          <div className="col-span-3">Description</div>
+          <div className="col-span-1">Qty</div>
           <div className="col-span-2">Unit Price</div>
+          <div className="col-span-2">Markup %</div>
           <div className="col-span-1 text-right">Total</div>
           <div className="col-span-1" />
         </div>
@@ -304,20 +333,52 @@ export default function EstimateForm() {
             </div>
           </div>
           <div className="flex items-center justify-between text-sm gap-3">
-            <span className="text-muted-foreground">Tax</span>
+            <span className="text-muted-foreground">Cash discount</span>
             <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                value={form.tax_percent}
-                onChange={(e) => setForm({ ...form, tax_percent: parseFloat(e.target.value) || 0 })}
-                className="w-20 h-8 text-sm text-right rounded-lg"
-                min="0"
-                step="0.1"
+              <Switch
+                checked={cashDiscountOn}
+                onCheckedChange={(v) => setForm({ ...form, cash_discount_percent: v ? (form.tax_percent || 0) : 0 })}
               />
-              <span className="text-muted-foreground">%</span>
-              <span className="font-medium text-card-foreground w-24 text-right">${taxAmount.toFixed(2)}</span>
+              {cashDiscountOn ? (
+                <>
+                  <Input
+                    type="number"
+                    value={form.cash_discount_percent}
+                    onChange={(e) => setForm({ ...form, cash_discount_percent: parseFloat(e.target.value) || 0 })}
+                    className="w-20 h-8 text-sm text-right rounded-lg"
+                    min="0"
+                    step="0.1"
+                  />
+                  <span className="text-muted-foreground">%</span>
+                  <span className="font-medium text-emerald-600 w-24 text-right">−${discountAmount.toFixed(2)}</span>
+                </>
+              ) : (
+                <span className="text-xs text-muted-foreground w-40 text-right">Replaces sales tax</span>
+              )}
             </div>
           </div>
+          {cashDiscountOn ? (
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Tax</span>
+              <span className="text-xs text-muted-foreground">Replaced by cash discount</span>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between text-sm gap-3">
+              <span className="text-muted-foreground">Tax</span>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  value={form.tax_percent}
+                  onChange={(e) => setForm({ ...form, tax_percent: parseFloat(e.target.value) || 0 })}
+                  className="w-20 h-8 text-sm text-right rounded-lg"
+                  min="0"
+                  step="0.1"
+                />
+                <span className="text-muted-foreground">%</span>
+                <span className="font-medium text-card-foreground w-24 text-right">${taxAmount.toFixed(2)}</span>
+              </div>
+            </div>
+          )}
           <div className="border-t border-border pt-3 flex justify-between items-center">
             <span className="font-heading font-semibold text-card-foreground">Total</span>
             <span className="text-2xl font-display font-bold text-primary">${grandTotal.toFixed(2)}</span>

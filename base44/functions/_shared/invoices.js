@@ -61,6 +61,8 @@ export async function createInvoiceForJob(base44, job) {
     markup_amount: money(estimate?.markup_amount),
     tax_percent: money(estimate?.tax_percent),
     tax_amount: money(estimate?.tax_amount),
+    cash_discount_percent: money(estimate?.cash_discount_percent),
+    discount_amount: money(estimate?.discount_amount),
     total,
     total_cents: totalCents,
     amount_paid_cents: 0,
